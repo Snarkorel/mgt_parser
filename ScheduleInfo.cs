@@ -36,6 +36,17 @@ namespace mgt_parser
             _stopName = stopName;
         }
 
+        public ScheduleInfo(string type, string route, string day, string dir, string dirName, int stopNum, string stopName)
+        {
+            _transportType = TrType.GetTransportType(type);
+            _routeName = route;
+            _days = Day.GetDayCode(day);
+            _direction = Direction.GetDirectionCode(dir);
+            _directionName = dirName;
+            _stopNumber = stopNum;
+            _stopName = stopName;
+        }
+
         public TransportType GetTransportType()
         {
             return _transportType;

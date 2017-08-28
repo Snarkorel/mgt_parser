@@ -10,17 +10,20 @@ namespace mgt_parser
     class Program
     {
         private static HttpClient _client;
+        private static List<Schedule> _schedules;
 
         static void Main(string[] args)
         {
             Console.WriteLine("Starting");
             _client = new HttpClient();
+            _schedules = new List<Schedule>();
             GetLists(_client);
             Console.WriteLine("Finishing"); //TODO: wait for async completion
             while (true) { };
         }
 
         //example
+        /*
         private static async void HttpRequest()
         {
             const string hostname = "http://ya.ru";
@@ -31,6 +34,7 @@ namespace mgt_parser
             var responseBody = await response.Content.ReadAsStringAsync();
             Console.WriteLine(responseBody);
         }
+        */
 
         private static async void GetLists(HttpClient client)
         {
@@ -46,23 +50,30 @@ namespace mgt_parser
                     foreach(var day in days)
                     {
                         Console.WriteLine("\t\tWorks on " + day);
-                        //TODO: direction names is not necessary, use AB/BA instead
+                        //Direction names is not necessary, use AB/BA instead for iterating
                         var directions = await GetDirections(client, type, route, day);
                         foreach(var direction in directions)
                         {
                             Console.WriteLine("\t\t\tFound direction: " + direction);
                         }
 
-                        foreach(var dir in Direction.Directions)
+                        for(var j = 0; j < Direction.Directions.Length; j++)
                         {
+                            var dir = Direction.Directions[j];
+                            var direction = directions[j];
                             var stops = await GetStops(client, type, route, day, dir);
-                            foreach (var stop in stops)
+                            for (var stopNum = 0; stopNum < stops.Count; stopNum++)
                             {
-                                Console.WriteLine("\t\t\t\tFound stops: " + stop);
+                                Console.WriteLine("\t\t\t\tFound stops: " + stops[stopNum]);
+
+                                //test
+                                _schedules.Add(new Schedule(new ScheduleInfo(type, route, day, dir, direction, stopNum, stops[stopNum])));
                             }
+
                             
+
                             //GetSchedule(client, type, route, day, dir, "all");
-                            //for (var stopNum = 0; stopNum < stops.Length; stopNum++)
+                            //for (var stopNum = 0; stopNum < stops.Count; stopNum++)
                             //{
                             //    GetSchedule(client, type, route, day, dir, stopNum.ToString());
                             //}
@@ -72,6 +83,7 @@ namespace mgt_parser
                 }
             }
 
+            Console.WriteLine("Now _schedules list should contain all found schedules");
         }
 
         private static void ParseSchedule(string htmlData)
