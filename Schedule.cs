@@ -9,6 +9,7 @@ namespace mgt_parser
 
         public Schedule(ScheduleInfo info)
         {
+            _info = info;
             _entries = new List<ScheduleEntry>();
         }
 
