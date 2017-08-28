@@ -33,9 +33,9 @@
             return string.Format(ScheduleRequestUri, type, route, days, direction, stop);
         }
 
-        public static string GetUri(TransportType type, string route, DaysOfOperation days, DirectionCode direction, int stop)
+        public static string GetUri(TransportType type, string route, Days days, DirectionCode direction, int stop)
         {
-            return string.Format(ScheduleRequestUri, TrType.GetTypeString(type), route, Day.GetDayString(days), Direction.GetDirectionString(direction), stop);
+            return string.Format(ScheduleRequestUri, TrType.GetTypeString(type), route, days.GetDaysString(), Direction.GetDirectionString(direction), stop);
         }
     }
 }

@@ -6,13 +6,13 @@ namespace mgt_parser
     {
         private TransportType _transportType;
         private string _routeName;
-        private DaysOfOperation _days;
+        private Days _days;
         private DirectionCode _direction;
         private string _directionName;
         private int _stopNumber;
         private string _stopName;
 
-        public ScheduleInfo(TransportType type, string route, DaysOfOperation day, DirectionCode dir, string dirName, int stopNum, string stopName)
+        public ScheduleInfo(TransportType type, string route, Days day, DirectionCode dir, string dirName, int stopNum, string stopName)
         {
             _transportType = type;
             _routeName = route;
@@ -27,7 +27,7 @@ namespace mgt_parser
         {
             _transportType = TrType.GetTransportType(type);
             _routeName = route;
-            _days = Day.GetDayCode(day);
+            _days = new Days(day);
             _direction = Direction.GetDirectionCode(dir);
             _directionName = dirName;
             if (stopNum == "all")
@@ -40,7 +40,7 @@ namespace mgt_parser
         {
             _transportType = TrType.GetTransportType(type);
             _routeName = route;
-            _days = Day.GetDayCode(day);
+            _days = new Days(day);
             _direction = Direction.GetDirectionCode(dir);
             _directionName = dirName;
             _stopNumber = stopNum;
@@ -57,7 +57,7 @@ namespace mgt_parser
             return _routeName;
         }
 
-        public DaysOfOperation GetDaysOfOperation()
+        public Days GetDaysOfOperation()
         {
             return _days;
         }

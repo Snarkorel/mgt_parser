@@ -1,7 +1,10 @@
 ﻿using System;
+using System.Collections;
+using System.Text;
 
 namespace mgt_parser
 {
+    /*
     public enum DaysOfOperation
     {
         /// <summary>
@@ -25,7 +28,48 @@ namespace mgt_parser
         /// </summary>
         Sunday
     }
+    */
 
+    public class Days
+    {
+        private const int DayBitsLength = 7;
+        BitArray _daysOfOperation;
+
+        public Days(BitArray days)
+        {
+            if (days.Length != DayBitsLength)
+                throw new ArgumentOutOfRangeException("Invalid days of operation bits count", days.ToString());
+            _daysOfOperation = days;
+        }
+
+        public Days(string days)
+        {
+            if (days.Length != DayBitsLength)
+                throw new ArgumentOutOfRangeException("Invalid days of operation bitmask", days);
+            _daysOfOperation = new BitArray(DayBitsLength);
+            for (var i = 0; i < days.Length; i++)
+            {
+                _daysOfOperation[i] = days[i] == '1';
+            }
+        }
+
+        public BitArray GetDays()
+        {
+            return _daysOfOperation; //TODO: check for null?
+        }
+
+        public string GetDaysString()
+        {
+            StringBuilder bitString = new StringBuilder();
+            for (var i = 0; i < _daysOfOperation.Length; i++)
+            {
+                bitString.Append(_daysOfOperation[i] ? '1' : '0');
+            }
+            return bitString.ToString();
+        }
+    }
+
+    /*
     public static class Day
     {
         private const string Daily =    "1111111";
@@ -59,5 +103,5 @@ namespace mgt_parser
                 default: throw new ArgumentOutOfRangeException(days, "Unknown day of operation");
             }
         }
-    }
+    }*/
 }
