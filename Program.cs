@@ -9,41 +9,7 @@ namespace mgt_parser
 {
     class Program
     {
-        private static string routeListRequestUri = "http://mosgortrans.org/pass3/request.ajax.php?list=ways&type={0}";
-        private static string routeDaysRequestUri = "http://mosgortrans.org/pass3/request.ajax.php?list=days&type={0}&way={1}";
-        private static string routeDirectionsRequestUri = "http://mosgortrans.org/pass3/request.ajax.php?list=directions&type={0}&way={1}&date={2}";
-        private static string routesStopsRequestUri = "http://mosgortrans.org/pass3/request.ajax.php?list=waypoints&type={0}&way={1}&date={2}&direction={3}";
-        private static string routeScheduleRequestUri = "http://mosgortrans.org/pass3/shedule.php?type={0}&way={1}&date={2}&direction={3}&waypoint={4}";
-
-        static string GetUri(string type)
-        {
-            return string.Format(routeListRequestUri, type);
-        }
-
-        static string GetUri(string type, string route)
-        {
-            return string.Format(routeDaysRequestUri, type, route);
-        }
-
-        static string GetUri(string type, string route, string days)
-        {
-            return string.Format(routeDirectionsRequestUri, type, route, days);
-        }
-
-        static string GetUri(string type, string route, string days, string direction)
-        {
-            return string.Format(routesStopsRequestUri, type, route, days, direction);
-        }
-
-        static string GetUri(string type, string route, string days, string direction, string stop)
-        {
-            return string.Format(routeScheduleRequestUri, type, route, days, direction, stop);
-        }
-        
         private static HttpClient _client;
-        //TODO: const
-        private static string[] TransportTypes = { "avto", "trol", "tram" };
-        private static string[] Directions = { "AB", "BA" };
 
         static void Main(string[] args)
         {
@@ -68,9 +34,9 @@ namespace mgt_parser
 
         private static async void GetLists(HttpClient client)
         {
-            for (var i = 0; i < TransportTypes.Length; i++)
+            for (var i = 0; i < TrType.TransportTypes.Length; i++)
             {
-                var type = TransportTypes[i];
+                var type = TrType.TransportTypes[i];
                 Console.WriteLine("Obtaining routes for " + type);
                 var routes = await GetRoutesList(_client, type);
                 foreach(var route in routes)
@@ -87,7 +53,7 @@ namespace mgt_parser
                             Console.WriteLine("\t\t\tFound direction: " + direction);
                         }
 
-                        foreach(var dir in Directions)
+                        foreach(var dir in Direction.Directions)
                         {
                             var stops = await GetStops(client, type, route, day, dir);
                             foreach (var stop in stops)
@@ -152,7 +118,7 @@ namespace mgt_parser
         private static async Task<List<string>> GetRoutesList(HttpClient client, string type)
         {
             Console.WriteLine("Obtaining routes list");
-            var uri = GetUri(type);
+            var uri = Uri.GetUri(type);
             var list = await GetListHttpResponse(client, uri);
             return list;
         }
@@ -160,7 +126,7 @@ namespace mgt_parser
         private static async Task<List<string>> GetDaysOfOperation(HttpClient client, string type, string route)
         {
             Console.WriteLine("Obtaining days of operation list");
-            var uri = GetUri(type, route);
+            var uri = Uri.GetUri(type, route);
             var list = await GetListHttpResponse(client, uri);
             return list;
         }
@@ -168,7 +134,7 @@ namespace mgt_parser
         private static async Task<List<string>> GetDirections(HttpClient client, string type, string route, string days)
         {
             Console.WriteLine("Obtaining list of directions");
-            var uri = GetUri(type, route, days);
+            var uri = Uri.GetUri(type, route, days);
             var list = await GetListHttpResponse(client, uri);
             return list;
         }
@@ -176,7 +142,7 @@ namespace mgt_parser
         private static async Task<List<string>> GetStops(HttpClient client, string type, string route, string days, string direction)
         {
             Console.WriteLine("Obtaining list of stops");
-            var uri = GetUri(type, route, days, direction);
+            var uri = Uri.GetUri(type, route, days, direction);
             var list = await GetListHttpResponse(client, uri);
             return list;
         }
@@ -184,7 +150,7 @@ namespace mgt_parser
         private static async void GetSchedule(HttpClient client, string type, string route, string days, string direction, string stop)
         {
             Console.WriteLine("Obtaining schedule for stop");
-            var uri = GetUri(type, route, days, direction, stop);
+            var uri = Uri.GetUri(type, route, days, direction, stop);
             var response = await GetHttpResponse(client, uri);
             Console.WriteLine("Response: " + response);
             ParseSchedule(response);

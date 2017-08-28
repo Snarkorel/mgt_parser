@@ -43,8 +43,16 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DaysOfOperation.cs" />
+    <Compile Include="Direction.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RouteType.cs" />
+    <Compile Include="Schedule.cs" />
+    <Compile Include="ScheduleEntry.cs" />
+    <Compile Include="ScheduleInfo.cs" />
+    <Compile Include="TransportType.cs" />
+    <Compile Include="Uri.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
