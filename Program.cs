@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Net.Http;
 
@@ -17,24 +17,20 @@ namespace mgt_parser
             Console.WriteLine("Starting");
             _client = new HttpClient();
             _schedules = new List<Schedule>();
-            GetLists(_client);
-            Console.WriteLine("Finishing"); //TODO: wait for async completion
+            //GetLists(_client);
+            //Console.WriteLine("Finishing"); //TODO: wait for async completion
+
+            //TEST
+            TestScheduleParser(_client);
+
             while (true) { };
         }
 
-        //example
-        /*
-        private static async void HttpRequest()
+        private static async void TestScheduleParser(HttpClient client)
         {
-            const string hostname = "http://ya.ru";
-            var client = new HttpClient();
-            Console.WriteLine("Asking host " + hostname);
-            HttpResponseMessage response = await client.GetAsync(hostname);
-            response.EnsureSuccessStatusCode();
-            var responseBody = await response.Content.ReadAsStringAsync();
-            Console.WriteLine(responseBody);
+            var rawData = await GetSchedule(_client, "avto", "0", "1111100", "AB", "1");
+            ParseSchedule(rawData);
         }
-        */
 
         private static async void GetLists(HttpClient client)
         {
@@ -64,21 +60,21 @@ namespace mgt_parser
                             var stops = await GetStops(client, type, route, day, dir);
                             for (var stopNum = 0; stopNum < stops.Count; stopNum++)
                             {
-                                Console.WriteLine("\t\t\t\tFound stops: " + stops[stopNum]);
+                                Console.WriteLine("\t\t\t\tFound stop: " + stops[stopNum]);
+
+                                //TODO: multithreading
+
+                                //TODO: parse schedule
+                                //GetSchedule(client, type, route, day, dir, "all");
+                                //for (var stopNum = 0; stopNum < stops.Count; stopNum++)
+                                //{
+                                //    GetSchedule(client, type, route, day, dir, stopNum.ToString());
+                                //}
 
                                 //test
                                 _schedules.Add(new Schedule(new ScheduleInfo(type, route, day, dir, direction, stopNum, stops[stopNum])));
                             }
-
-                            
-
-                            //GetSchedule(client, type, route, day, dir, "all");
-                            //for (var stopNum = 0; stopNum < stops.Count; stopNum++)
-                            //{
-                            //    GetSchedule(client, type, route, day, dir, stopNum.ToString());
-                            //}
                         }
-
                     }
                 }
             }
@@ -88,8 +84,60 @@ namespace mgt_parser
 
         private static void ParseSchedule(string htmlData)
         {
+            var index = 0;
+            var searchIndex = 0;
+            string validityStr;
+            const string ValidityTimeSearchStr = "c</h3></td><td><h3>";
+            
             //TODO
             Console.WriteLine("TODO TODO TODO - SCHEDULE PARSER IS NOT READY YET");
+
+
+            searchIndex = htmlData.IndexOf(ValidityTimeSearchStr, index);
+            if (searchIndex !=0)
+            {
+                index = searchIndex + ValidityTimeSearchStr.Length;
+                searchIndex = htmlData.IndexOf("<", index);
+                if (searchIndex != 0)
+                {
+                    validityStr = htmlData.Substring(index, searchIndex - index);
+                    var date = ParseDateTime(validityStr);
+                    index = searchIndex;
+                }
+            }
+        }
+
+        private static DateTime ParseDateTime(string dateStr)
+        {
+            Dictionary<string, int> months = new Dictionary<string, int> {
+                {"января", 1},
+                {"февраля", 2},
+                {"марта", 3},
+                {"апреля", 4},
+                {"мая", 5},
+                {"июня", 6},
+                {"июля", 7},
+                {"августа", 8},
+                {"сентября", 9},
+                {"октября", 10},
+                {"ноября", 11},
+                {"декабря", 12} };
+
+            const string regexPattern = @"(\d+) (\w+) (\d+)";
+            var regex = new Regex(regexPattern, RegexOptions.IgnoreCase);
+            var match = regex.Match(dateStr);
+
+            if (match.Groups.Count == 0)
+                throw new Exception("Regex for date not matched!");
+
+            Console.WriteLine(match.Value);
+            GroupCollection groups = match.Groups;
+
+            var day = Convert.ToInt32(groups[1].Value);
+            var month = months[groups[2].Value];
+            var year = Convert.ToInt32(groups[3].Value);
+
+            return new DateTime(year, month, day);
         }
 
         private static async Task<List<string>> GetListHttpResponse(HttpClient client, string uri)
@@ -159,13 +207,14 @@ namespace mgt_parser
             return list;
         }
 
-        private static async void GetSchedule(HttpClient client, string type, string route, string days, string direction, string stop)
+        private static async Task<string> GetSchedule(HttpClient client, string type, string route, string days, string direction, string stop)
         {
             Console.WriteLine("Obtaining schedule for stop");
             var uri = Uri.GetUri(type, route, days, direction, stop);
             var response = await GetHttpResponse(client, uri);
             Console.WriteLine("Response: " + response);
-            ParseSchedule(response);
+            //ParseSchedule(response);
+            return response;
         }
     }
 }
