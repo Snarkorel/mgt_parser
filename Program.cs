@@ -34,6 +34,11 @@ namespace mgt_parser
 
         private static async void GetLists(HttpClient client)
         {
+            var routesCount = new int[TrType.TransportTypes.Length];
+            var maxStops = 0;
+            string maxStopsRoute = "";
+            TransportType maxStopsTransport = TransportType.Bus;
+
             for (var i = 0; i < TrType.TransportTypes.Length; i++)
             {
                 var type = TrType.TransportTypes[i];
@@ -41,6 +46,7 @@ namespace mgt_parser
                 var routes = await GetRoutesList(_client, type);
                 foreach(var route in routes)
                 {
+                    routesCount[i]++;
                     Console.WriteLine("\tFound route: " + route);
                     var days = await GetDaysOfOperation(client, type, route);
                     foreach(var day in days)
@@ -58,6 +64,15 @@ namespace mgt_parser
                             var dir = Direction.Directions[j];
                             var direction = directions[j];
                             var stops = await GetStops(client, type, route, day, dir);
+
+                            //some statistics
+                            if (stops.Count > maxStops)
+                            {
+                                maxStops = stops.Count;
+                                maxStopsRoute = route;
+                                maxStopsTransport = (TransportType)i;
+                            }
+
                             for (var stopNum = 0; stopNum < stops.Count; stopNum++)
                             {
                                 Console.WriteLine("\t\t\t\tFound stop: " + stops[stopNum]);
@@ -80,6 +95,12 @@ namespace mgt_parser
             }
 
             Console.WriteLine("Now _schedules list should contain all found schedules");
+            Console.WriteLine("Statistics:");
+            for (var t = 0; t < routesCount.Length; t++)
+            {
+                Console.WriteLine(string.Format("Count of {0} routes: {1}", ((TransportType)t).ToString(), routesCount[t]));
+            }
+            Console.WriteLine(string.Format("{0} route number {1} have absolute maximum of stops count: {2}", maxStopsTransport.ToString(), maxStopsRoute, maxStops));
         }
 
         private static void ParseSchedule(string htmlData)
@@ -103,6 +124,10 @@ namespace mgt_parser
                     validityStr = htmlData.Substring(index, searchIndex - index);
                     var date = ParseDateTime(validityStr);
                     index = searchIndex;
+
+                    //TODO: iterative hours and minutes parsing
+
+                    //TODO: legend parsing
                 }
             }
         }
