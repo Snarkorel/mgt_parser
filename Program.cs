@@ -30,6 +30,9 @@ namespace mgt_parser
         {
             var rawData = await GetSchedule(_client, "avto", "0", "1111100", "AB", "1");
             ParseSchedule(rawData);
+
+            rawData = await GetSchedule(_client, "avto", "%C1%D7", "1111100", "AB", "1"); //TODO: convert cyrillic chars to HTML char codes
+            ParseSchedule(rawData);
         }
 
         private static async void GetLists(HttpClient client)
@@ -109,6 +112,10 @@ namespace mgt_parser
             var searchIndex = 0;
             string validityStr;
             const string ValidityTimeSearchStr = "c</h3></td><td><h3>";
+            const string LegendHeaderStr = "<h3>Легенда</h3>";
+            const string TagBeginning = "<";
+            const string TdTag = "</td>";
+            string legend, legendRed, legendGreen, legendBlue, legendUnknown; //is blue present?
             
             //TODO
             Console.WriteLine("TODO TODO TODO - SCHEDULE PARSER IS NOT READY YET");
@@ -118,16 +125,82 @@ namespace mgt_parser
             if (searchIndex !=0)
             {
                 index = searchIndex + ValidityTimeSearchStr.Length;
-                searchIndex = htmlData.IndexOf("<", index);
+                searchIndex = htmlData.IndexOf(TagBeginning, index);
                 if (searchIndex != 0)
                 {
                     validityStr = htmlData.Substring(index, searchIndex - index);
                     var date = ParseDateTime(validityStr);
+                    Console.WriteLine("Schedule valid from: " + date.ToString());
                     index = searchIndex;
 
                     //TODO: iterative hours and minutes parsing
+                    //TODO: parse colors for minutes
 
                     //TODO: legend parsing
+                    searchIndex = htmlData.IndexOf(LegendHeaderStr, index);
+                    if (searchIndex != 0)
+                    {
+                        index = searchIndex + LegendHeaderStr.Length;
+                        searchIndex = htmlData.IndexOf(TdTag, index);
+                        if (searchIndex != 0)
+                        {
+                            var legendData = htmlData.Substring(index, searchIndex - index);
+
+                            //.*? for non-greedy match instead of greedy .*
+                            const string noColorsRegexPattern = "<p class=\"helpfile\"><b>(.*)<\\/b>(.*)<\\/p>";
+                            const string colorsRegexPattern = "<p class=\"helpfile\"><b style=\"color: (\\w+)\">(.*?)<\\/b>(.*?)<\\/p>";
+
+                            //regex should be ungreedy
+                            //regex pattern without colors: <p class="helpfile"><b>(.*)<\/b>(.*)<\/p>
+                            //group1: bold text, group2: non-bold text (check for empty!)
+
+                            var noColorsRegex = new Regex(noColorsRegexPattern);
+                            var matches = noColorsRegex.Matches(legendData);
+
+                            Console.WriteLine("Matching non-colored legend...");
+
+                            if (matches.Count == 0)
+                                Console.WriteLine("Non-colored regex not matched!");
+                            else
+                            {
+                                foreach (Match match in matches)
+                                {
+                                    Console.WriteLine("Match: " + match.Value);
+                                    GroupCollection groups = match.Groups;
+                                    foreach (Group group in groups)
+                                    {
+                                        Console.WriteLine("Group: " + group.Value);
+                                    }
+                                }
+                            }
+
+                            Console.WriteLine("Matching colored legend...");
+                            //regex pattern with colors: <p class="helpfile"><b style="color: (\w+)">(.*)<\/b>(.*)<\/p>
+                            //should be multiple matches
+                            //group1: color name, group2: color russian name (bold text), group3: non-bold text (description)
+
+                            //TODO: non-greedy!
+                            var colorsRegex = new Regex(colorsRegexPattern);
+                            matches = colorsRegex.Matches(legendData);
+
+                            if (matches.Count == 0)
+                                Console.WriteLine("Colored regex not matched!");
+                            else
+                            {
+                                foreach (Match match in matches)
+                                {
+                                    Console.WriteLine("Match: " + match.Value);
+                                    GroupCollection groups = match.Groups;
+                                    foreach (Group group in groups)
+                                    {
+                                        Console.WriteLine("Group: " + group.Value);
+                                    }
+                                }
+                            }
+
+                            //TODO!
+                        }
+                    }
                 }
             }
         }
