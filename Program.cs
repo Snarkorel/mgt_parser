@@ -29,9 +29,13 @@ namespace mgt_parser
         private static async void TestScheduleParser(HttpClient client)
         {
             var rawData = await GetSchedule(_client, "avto", "0", "1111100", "AB", "1");
-            ParseSchedule(rawData);
+            //ParseSchedule(rawData);
 
-            rawData = await GetSchedule(_client, "avto", "%C1%D7", "1111100", "AB", "1"); //TODO: convert cyrillic chars to HTML char codes
+            //rawData = await GetSchedule(_client, "avto", "%C1%D7", "1111100", "AB", "1"); //TODO: convert cyrillic chars to HTML char codes
+            //ParseSchedule(rawData);
+
+            //shedule.php?type=avto&way=205&date=1111100&direction=AB&waypoint=2
+            rawData = await GetSchedule(_client, "avto", "205", "1111100", "AB", "2");
             ParseSchedule(rawData);
         }
 
@@ -90,7 +94,7 @@ namespace mgt_parser
                                 //}
 
                                 //test
-                                _schedules.Add(new Schedule(new ScheduleInfo(type, route, day, dir, direction, stopNum, stops[stopNum])));
+                                //_schedules.Add(new Schedule(new ScheduleInfo(type, route, day, dir, direction, stopNum, stops[stopNum])));
                             }
                         }
                     }
@@ -115,8 +119,12 @@ namespace mgt_parser
             const string LegendHeaderStr = "<h3>Легенда</h3>";
             const string TagBeginning = "<";
             const string TdTag = "</td>";
-            string legend, legendRed, legendGreen, legendBlue, legendUnknown; //is blue present?
-            
+
+            //<span class=\"hour\">(\d+)</span></td><td align=.*>(.*)</td>
+            const string HourSearchStr = "<span class=\"hour\">";
+            const string HourRegexPattern = "<span class=\"hour\">(\\d+)</span>"; //" < span class=\"hour\">(\\d+)</span></td><td align=.*>(.*)</td>";
+
+
             //TODO
             Console.WriteLine("TODO TODO TODO - SCHEDULE PARSER IS NOT READY YET");
 
@@ -134,6 +142,33 @@ namespace mgt_parser
                     index = searchIndex;
 
                     //TODO: iterative hours and minutes parsing
+                    do
+                    {
+                        sbyte hour = -1;
+                        searchIndex = htmlData.IndexOf(HourSearchStr, index);
+                        index = searchIndex;
+                        searchIndex = htmlData.IndexOf(TdTag, index);
+                        //TODO
+
+                        var hourRegex = new Regex(HourRegexPattern);
+                        var hourStr = htmlData.Substring(index, searchIndex);
+                        var hourMatch = hourRegex.Match(hourStr);
+                        if (hourMatch.Length == 0)
+                        {
+                            Console.WriteLine("Failed to find hour info!");
+                        }
+                        else
+                        {
+                            hour = Convert.ToSByte(hourMatch.Groups[1].Value);
+                        }
+
+
+                        //TODO: parse minutes
+
+                        index = searchIndex;
+                    }
+                    while (searchIndex > 0);
+
                     //TODO: parse colors for minutes
 
                     //TODO: legend parsing
@@ -150,7 +185,7 @@ namespace mgt_parser
                             const string noColorsRegexPattern = "<p class=\"helpfile\"><b>(.*)<\\/b>(.*)<\\/p>";
                             const string colorsRegexPattern = "<p class=\"helpfile\"><b style=\"color: (\\w+)\">(.*?)<\\/b>(.*?)<\\/p>";
 
-                            //regex should be ungreedy
+                            //regex should be ungreedy (*? insted of .*)
                             //regex pattern without colors: <p class="helpfile"><b>(.*)<\/b>(.*)<\/p>
                             //group1: bold text, group2: non-bold text (check for empty!)
 
@@ -197,6 +232,7 @@ namespace mgt_parser
                                     }
                                 }
                             }
+                            //TODO: schedule.AddSpecialRoute(type, destination);
 
                             //TODO!
                         }
@@ -311,7 +347,7 @@ namespace mgt_parser
             var uri = Uri.GetUri(type, route, days, direction, stop);
             var response = await GetHttpResponse(client, uri);
             Console.WriteLine("Response: " + response);
-            //ParseSchedule(response);
+            ParseSchedule(response);
             return response;
         }
     }
