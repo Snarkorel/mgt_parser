@@ -229,7 +229,7 @@ namespace mgt_parser
 
                     //.*? for non-greedy match instead of greedy .*
                     const string noColorsRegexPattern = "<p class=\"helpfile\"><b>(.*)<\\/b>(.*)<\\/p>";
-                    const string colorsRegexPattern = "<p class=\"helpfile\"><b style=\"color: (\\w+)\">(.*?)<\\/b>(.*?)<\\/p>"; //TODO: add support of hex-coded colors!
+                    const string colorsRegexPattern = "<p class=\"helpfile\"><b style=\"color: ([#a-zA-Z0-9]+)\">(.*?)<\\/b>(.*?)<\\/p>";
 
                     //regex should be ungreedy (*? insted of .*)
                     //regex pattern without colors: <p class="helpfile"><b>(.*)<\/b>(.*)<\/p>
