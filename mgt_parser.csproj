@@ -45,6 +45,7 @@
     <Compile Include="Schedule.cs" />
     <Compile Include="ScheduleEntry.cs" />
     <Compile Include="ScheduleInfo.cs" />
+    <Compile Include="ScheduleParser.cs" />
     <Compile Include="TransportType.cs" />
     <Compile Include="Uri.cs" />
   </ItemGroup>
