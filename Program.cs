@@ -64,7 +64,6 @@ namespace mgt_parser
                 Console.WriteLine(str);
         }
 
-        //TODO: task
         private static async void GetLists(HttpClient client)
         {
             var routesCount = new int[TrType.TransportTypes.Length];

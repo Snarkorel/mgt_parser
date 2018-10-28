@@ -29,7 +29,7 @@ namespace mgt_parser
             //<span class="minutes" >02</span>
             //<span class="minutes" style="color: red; font-weight: bold;">37</span><br>
             const string MinutesSearchStr = "<span class=\"minutes\"";
-            const string MinutesRegexPattern = "<span class=\"minutes\".*>(\\d+)</span>";
+            const string MinutesRegexPattern = "<span class=\"minutes\"( |.*color: ([a-zA-z0-9#]+).*)>(\\d+)</span>";
             var minuteRegex = new Regex(MinutesRegexPattern);
 
             //Starting routine
@@ -91,7 +91,6 @@ namespace mgt_parser
                         break;
                     var minuteStr = allMinutesStr.Substring(minuteIndex, minuteSearchIndex - minuteIndex + SpanClosingTag.Length);
                     minuteIndex = minuteSearchIndex + SpanClosingTag.Length;
-                    //TODO: parse minutes colors (RouteType)
                     var minuteMatch = minuteRegex.Match(minuteStr);
                     if (minuteMatch.Length == 0)
                     {
@@ -99,10 +98,17 @@ namespace mgt_parser
                     }
                     else
                     {
-                        var minute = Convert.ToSByte(minuteMatch.Groups[1].Value);
                         if (hour == -1)
                             throw new Exception("Hours parser fucked up!");
-                        schedule.AddEntry(new ScheduleEntry(hour, minute)); //TODO RouteType (color)
+                        var minute = Convert.ToSByte(minuteMatch.Groups[3].Value);
+                        var specialRoute = minuteMatch.Groups[2].Value;
+                        if (specialRoute.Length > 1)
+                        {
+                            var type = RouteTypeProvider.GetRouteType(specialRoute);
+                            schedule.AddEntry(new ScheduleEntry(hour, minute, type)); //special route
+                        }
+                        else
+                            schedule.AddEntry(new ScheduleEntry(hour, minute)); //regular route
                     }
                 }
 

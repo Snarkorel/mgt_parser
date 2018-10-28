@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace mgt_parser
+﻿namespace mgt_parser
 {
     public class ScheduleInfo
     {
