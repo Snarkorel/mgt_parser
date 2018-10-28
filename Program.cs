@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Net.Http;
@@ -59,7 +58,7 @@ namespace mgt_parser
                     foreach(var day in days)
                     {
                         Console.WriteLine("\t\tWorks on " + day);
-                        //Direction names is not necessary, use AB/BA instead for iterating
+                        //Direction names is not necessary, using AB/BA instead for iterating
                         var directions = await GetDirections(client, type, route, day);
                         foreach(var direction in directions)
                         {
@@ -110,6 +109,7 @@ namespace mgt_parser
             Console.WriteLine(string.Format("{0} route number {1} have absolute maximum of stops count: {2}", maxStopsTransport.ToString(), maxStopsRoute, maxStops));
         }
 
+        //I know that parsing HTML by regex is a bad idea, but objective is not to use third-party parsers
         private static void ParseSchedule(string htmlData)
         {
             var index = 0;
@@ -212,7 +212,7 @@ namespace mgt_parser
                             Console.WriteLine("Matching colored legend...");
                             //regex pattern with colors: <p class="helpfile"><b style="color: (\w+)">(.*)<\/b>(.*)<\/p>
                             //should be multiple matches
-                            //group1: color name, group2: color russian name (bold text), group3: non-bold text (description)
+                            //group1: color name, group2: color name in russian (bold text), group3: non-bold text (description)
 
                             //TODO: non-greedy!
                             var colorsRegex = new Regex(colorsRegexPattern);
