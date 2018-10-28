@@ -2,21 +2,39 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Net.Http;
+using System.Runtime.Serialization.Formatters.Binary;
+using System.IO;
 
 namespace mgt_parser
 {
-    class Program
+    class Program //TODO: in future this should be a class library
     {
         private static HttpClient _client;
         private static List<Schedule> _schedules;
 
-        static void Main(string[] args)
+        static void Main(string[] args) //TODO: args - verbose (for debug output), load (for saved schedule loading and deserializing), void (for requesting server without saving output)
         {
             Console.WriteLine("Starting");
             _client = new HttpClient();
             _schedules = new List<Schedule>();
             //GetLists(_client);
+            //Serialization of results
+            //var filename = (DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds + ".dat";
+            //using (FileStream file = new FileStream(filename, FileMode.Create))
+            //{
+            //    BinaryFormatter formatter = new BinaryFormatter();
+            //    formatter.Serialize(file, _schedules);
+            //    file.Close();
+            //}
             //Console.WriteLine("Finishing"); //TODO: wait for async completion
+
+            //Deserialization of results - uncomment when "-load" argument will be supported
+            //filename = args...
+            //using (FileStream file = new FileStream(filename, FileMode.Open))
+            //{
+            //    BinaryFormatter formatter = new BinaryFormatter();
+            //    _schedules = (List<Schedule>)formatter.Deserialize(file);
+            //}
 
             //TEST
             TestScheduleParser(_client);
@@ -39,6 +57,7 @@ namespace mgt_parser
             schedule = await GetSchedule(_client, scheduleInfo);
         }
 
+        //TODO: task
         private static async void GetLists(HttpClient client)
         {
             var routesCount = new int[TrType.TransportTypes.Length];
