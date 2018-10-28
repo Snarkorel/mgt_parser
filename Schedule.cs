@@ -6,7 +6,7 @@ namespace mgt_parser
     {
         private ScheduleInfo _info;
         private List<ScheduleEntry> _entries;
-        //TODO: хранить направления спецрейсов в Hashtable
+        //TODO: store special trips directions in a Hashtable
 
         public Schedule(ScheduleInfo info)
         {
