@@ -87,17 +87,9 @@ namespace mgt_parser
 
                                 //TODO: multithreading
 
-                                //TODO: dont forget to set stop name and direction name (if it's not obtained earlier)
-
-                                //TODO: parse schedule
-                                //GetSchedule(client, type, route, day, dir, "all");
-                                //for (var stopNum = 0; stopNum < stops.Count; stopNum++)
-                                //{
-                                //    GetSchedule(client, type, route, day, dir, stopNum.ToString());
-                                //}
-
-                                //test
-                                //_schedules.Add(new Schedule(new ScheduleInfo(type, route, day, dir, direction, stopNum, stops[stopNum])));
+                                var scheduleInfo = new ScheduleInfo(type, route, day, dir, direction, stopNum, stops[stopNum]);
+                                var schedule = await GetSchedule(client, scheduleInfo);
+                                _schedules.Add(schedule);
                             }
                         }
                     }
