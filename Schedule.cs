@@ -1,12 +1,14 @@
 ﻿using System.Collections.Generic;
+using System;
 
 namespace mgt_parser
 {
-    public class Schedule //TODO: IEnumerable
+    public class Schedule //TODO: IEnumerable?
     {
         private ScheduleInfo _info;
         private List<ScheduleEntry> _entries;
-        //TODO: store special trips directions in a Hashtable
+        private DateTime _validFrom;
+        private Dictionary<RouteType,string> _destinations; 
 
         public Schedule(ScheduleInfo info)
         {
@@ -36,7 +38,33 @@ namespace mgt_parser
 
         public void SetSpecialRoute(RouteType type, string destination)
         {
-            //TODO!
+            if (_destinations == null)
+                _destinations = new Dictionary<RouteType, string>();
+            _destinations.Add(type, destination);
+        }
+
+        public string GetSpecialRoute(RouteType type)
+        {
+            string val;
+            try
+            {
+                _destinations.TryGetValue(type, out val);
+            }
+            catch (Exception)
+            {
+                val = string.Empty;
+            }
+            return val;
+        }
+
+        public void SetValidityTime(DateTime validFrom)
+        {
+            _validFrom = validFrom;
+        }
+
+        public DateTime GetValidityTime()
+        {
+            return _validFrom;
         }
     }
 }
