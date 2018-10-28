@@ -27,16 +27,17 @@ namespace mgt_parser
 
         private static async void TestScheduleParser(HttpClient client)
         {
-            //var scheduleInfo = new ScheduleInfo("avto", "0", "1111100", "AB", 1); //simple case
-            //var rawData = await GetSchedule(_client, scheduleInfo);
-            //ParseSchedule(rawData);
-
-            //rawData = await GetSchedule(_client, "avto", "%C1%D7", "1111100", "AB", "1"); //TODO: convert cyrillic chars to HTML char codes
-            //ParseSchedule(rawData);
-
-            //shedule.php?type=avto&way=205&date=1111100&direction=AB&waypoint=2
-            var scheduleInfo = new ScheduleInfo("avto", "205", "1111100", "AB", 2); //complex case with different colors
+            //shedule.php?type=avto&way=0&date=1111100&direction=AB&waypoint=1
+            var scheduleInfo = new ScheduleInfo("avto", "0", "1111100", "AB", 1); //simple case
             var schedule = await GetSchedule(_client, scheduleInfo);
+          
+            //shedule.php?type=avto&way=205&date=1111100&direction=AB&waypoint=2
+            scheduleInfo = new ScheduleInfo("avto", "205", "1111100", "AB", 2); //complex case with different colors
+            schedule = await GetSchedule(_client, scheduleInfo);
+
+            //shedule.php?type=avto&way=%C1%CA&date=1111100&direction=AB&waypoint=1
+            scheduleInfo = new ScheduleInfo("avto", "%C1%CA", "1111100", "AB", 1); //TODO: convert cyrillic chars to HTML char codes
+            schedule = await GetSchedule(_client, scheduleInfo);
         }
 
         private static async void GetLists(HttpClient client)
@@ -86,6 +87,8 @@ namespace mgt_parser
 
                                 //TODO: multithreading
 
+                                //TODO: dont forget to set stop name and direction name (if it's not obtained earlier)
+
                                 //TODO: parse schedule
                                 //GetSchedule(client, type, route, day, dir, "all");
                                 //for (var stopNum = 0; stopNum < stops.Count; stopNum++)
@@ -114,8 +117,7 @@ namespace mgt_parser
         private static Schedule ParseSchedule(string htmlData, ScheduleInfo si)
         {
             var schedule = new Schedule(si);
-            //TODO: dont forget to set stop name and direction name (if it's not obtained earlier)
-
+            
             var index = 0; //Current position of htmlData processing (shifts if some item is found and parsed)
             var searchIndex = 0; //Curent position of search ahead of index
 
@@ -124,6 +126,8 @@ namespace mgt_parser
             const string TagBeginning = "<";
             const string TdClosingTag = "</td>";
             const string SpanClosingTag = "</span>";
+            const string NoDataForLegend = "Нет особых данных для легенды";
+            const string From = "от";
 
             //<span class=\"hour\">(\d+)</span></td><td align=.*>(.*)</td>
             const string HourSearchStr = "<span class=\"hour\">";
@@ -135,9 +139,7 @@ namespace mgt_parser
             const string MinutesRegexPattern = "<span class=\"minutes\".*>(\\d+)</span>";
             var minuteRegex = new Regex(MinutesRegexPattern);
 
-            //TODO: remove this later
-            Console.WriteLine("TODO TODO TODO - SCHEDULE PARSER IS NOT READY YET");
-
+            //Starting routine
 
             searchIndex = htmlData.IndexOf(ValidityTimeSearchStr, index);
             if (searchIndex == -1)
@@ -217,7 +219,7 @@ namespace mgt_parser
             }
             while (searchIndex > 0);
 
-            //TODO: legend parsing
+            //Parsing the legend
             searchIndex = htmlData.IndexOf(LegendHeaderStr, index);
             if (searchIndex != 0)
             {
@@ -244,15 +246,20 @@ namespace mgt_parser
                         Console.WriteLine("Non-colored regex not matched!");
                     else
                     {
-                        foreach (Match match in matches)
+                        if (legendData.IndexOf(NoDataForLegend) == -1)
                         {
-                            Console.WriteLine("Match: " + match.Value);
-                            GroupCollection groups = match.Groups;
-                            foreach (Group group in groups)
+                            //normally we shouldn't be there. This output just for debugging purposes and should be removed later (TODO)
+                            foreach (Match match in matches)
                             {
-                                Console.WriteLine("Group: " + group.Value);
+                                Console.WriteLine("Match: " + match.Value);
+                                GroupCollection groups = match.Groups;
+                                foreach (Group group in groups)
+                                {
+                                    Console.WriteLine("Group: " + group.Value);
+                                }
                             }
                         }
+                        
                     }
 
                     Console.WriteLine("Matching colored legend...");
@@ -260,7 +267,6 @@ namespace mgt_parser
                     //should be multiple matches
                     //group1: color name, group2: color name in russian (bold text), group3: non-bold text (description)
 
-                    //TODO: non-greedy!
                     var colorsRegex = new Regex(colorsRegexPattern);
                     matches = colorsRegex.Matches(legendData);
 
@@ -272,11 +278,11 @@ namespace mgt_parser
                         {
                             Console.WriteLine("Match: " + match.Value);
                             GroupCollection groups = match.Groups;
-                            foreach (Group group in groups)
-                            {
-                                Console.WriteLine("Group: " + group.Value);
-                                //TODO: schedule.AddSpecialRoute(type, destination);
-                            }
+                            var type = RouteTypeProvider.GetRouteType(groups[1].Value);
+                            var destinationRaw = groups[3].Value; //TODO: change regexp, no need in russian name of color
+                            var startIndex = destinationRaw.IndexOf(From);
+                            var destination = destinationRaw.Substring(startIndex);
+                            schedule.SetSpecialRoute(type, destination);
                         }
                     }
                 }
