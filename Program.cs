@@ -11,10 +11,11 @@ namespace mgt_parser
     {
         private static HttpClient _client;
         private static List<Schedule> _schedules;
+        private static bool _verbose; //TODO: set via command-line arguments
 
         static void Main(string[] args) //TODO: args - verbose (for debug output), load (for saved schedule loading and deserializing), void (for requesting server without saving output)
         {
-            Console.WriteLine("Starting");
+            VerbosePrint("Starting");
             _client = new HttpClient();
             _schedules = new List<Schedule>();
             //GetLists(_client);
@@ -26,7 +27,7 @@ namespace mgt_parser
             //    formatter.Serialize(file, _schedules);
             //    file.Close();
             //}
-            //Console.WriteLine("Finishing"); //TODO: wait for async completion
+            //VerbosePrint("Finishing"); //TODO: wait for async completion
 
             //Deserialization of results - uncomment when "-load" argument will be supported
             //filename = args...
@@ -57,6 +58,12 @@ namespace mgt_parser
             schedule = await GetSchedule(_client, scheduleInfo);
         }
 
+        private static void VerbosePrint(string str)
+        {
+            if (_verbose)
+                Console.WriteLine(str);
+        }
+
         //TODO: task
         private static async void GetLists(HttpClient client)
         {
@@ -68,21 +75,21 @@ namespace mgt_parser
             for (var i = 0; i < TrType.TransportTypes.Length; i++)
             {
                 var type = TrType.TransportTypes[i];
-                Console.WriteLine("Obtaining routes for " + type);
+                VerbosePrint("Obtaining routes for " + type);
                 var routes = await GetRoutesList(_client, type);
                 foreach(var route in routes)
                 {
                     routesCount[i]++;
-                    Console.WriteLine("\tFound route: " + route);
+                    VerbosePrint("\tFound route: " + route);
                     var days = await GetDaysOfOperation(client, type, route);
                     foreach(var day in days)
                     {
-                        Console.WriteLine("\t\tWorks on " + day);
+                        VerbosePrint("\t\tWorks on " + day);
                         //Direction names is not necessary, using AB/BA instead for iterating
                         var directions = await GetDirections(client, type, route, day);
                         foreach(var direction in directions)
                         {
-                            Console.WriteLine("\t\t\tFound direction: " + direction);
+                            VerbosePrint("\t\t\tFound direction: " + direction);
                         }
 
                         for(var j = 0; j < Direction.Directions.Length; j++)
@@ -101,7 +108,7 @@ namespace mgt_parser
 
                             for (var stopNum = 0; stopNum < stops.Count; stopNum++)
                             {
-                                Console.WriteLine("\t\t\t\tFound stop: " + stops[stopNum]);
+                                VerbosePrint("\t\t\t\tFound stop: " + stops[stopNum]);
 
                                 //TODO: multithreading
 
@@ -114,13 +121,13 @@ namespace mgt_parser
                 }
             }
 
-            Console.WriteLine("Now _schedules list should contain all found schedules");
-            Console.WriteLine("Statistics:");
+            VerbosePrint("Now _schedules list should contain all found schedules");
+            VerbosePrint("Statistics:");
             for (var t = 0; t < routesCount.Length; t++)
             {
-                Console.WriteLine(string.Format("Count of {0} routes: {1}", ((TransportType)t).ToString(), routesCount[t]));
+                VerbosePrint(string.Format("Count of {0} routes: {1}", ((TransportType)t).ToString(), routesCount[t]));
             }
-            Console.WriteLine(string.Format("{0} route number {1} have absolute maximum of stops count: {2}", maxStopsTransport.ToString(), maxStopsRoute, maxStops));
+            VerbosePrint(string.Format("{0} route number {1} have absolute maximum of stops count: {2}", maxStopsTransport.ToString(), maxStopsRoute, maxStops));
         }
 
         private static async Task<List<string>> GetListHttpResponse(HttpClient client, string uri)
@@ -140,27 +147,27 @@ namespace mgt_parser
 
         private static async Task<string> GetHttpResponse(HttpClient client, string uri)
         {
-            Console.WriteLine("Request: " + uri);
+            VerbosePrint("Request: " + uri);
             try
             {
                 var response = await client.GetAsync(uri);
                 response.EnsureSuccessStatusCode();
                 var responseBody = await response.Content.ReadAsStringAsync();
-                //Console.WriteLine(responseBody);
+                //VerbosePrint(responseBody);
                 if (responseBody.Length == 0)
-                    Console.WriteLine("FAIL: EMPTY RESPONSE");
+                    VerbosePrint("FAIL: EMPTY RESPONSE"); //TODO: exception
                 return responseBody;
             }
             catch (Exception e)
             {
-                Console.WriteLine("Failed to get response, exception: " + e.Message);
+                VerbosePrint("Failed to get response, exception: " + e.Message);
                 return string.Empty;
             }
         }
 
         private static async Task<List<string>> GetRoutesList(HttpClient client, string type)
         {
-            Console.WriteLine("Obtaining routes list");
+            VerbosePrint("Obtaining routes list");
             var uri = Uri.GetUri(type);
             var list = await GetListHttpResponse(client, uri);
             return list;
@@ -168,7 +175,7 @@ namespace mgt_parser
 
         private static async Task<List<string>> GetDaysOfOperation(HttpClient client, string type, string route)
         {
-            Console.WriteLine("Obtaining days of operation list");
+            VerbosePrint("Obtaining days of operation list");
             var uri = Uri.GetUri(type, route);
             var list = await GetListHttpResponse(client, uri);
             return list;
@@ -176,7 +183,7 @@ namespace mgt_parser
 
         private static async Task<List<string>> GetDirections(HttpClient client, string type, string route, string days)
         {
-            Console.WriteLine("Obtaining list of directions");
+            VerbosePrint("Obtaining list of directions");
             var uri = Uri.GetUri(type, route, days);
             var list = await GetListHttpResponse(client, uri);
             return list;
@@ -184,7 +191,7 @@ namespace mgt_parser
 
         private static async Task<List<string>> GetStops(HttpClient client, string type, string route, string days, string direction)
         {
-            Console.WriteLine("Obtaining list of stops");
+            VerbosePrint("Obtaining list of stops");
             var uri = Uri.GetUri(type, route, days, direction);
             var list = await GetListHttpResponse(client, uri);
             return list;
@@ -192,10 +199,10 @@ namespace mgt_parser
 
         private static async Task<Schedule> GetSchedule(HttpClient client, ScheduleInfo si)
         {
-            Console.WriteLine("Obtaining schedule for stop");
+            VerbosePrint("Obtaining schedule for stop");
             var uri = Uri.GetUri(si.GetTransportTypeString(), si.GetRouteName(), si.GetDaysOfOperation().ToString(), si.GetDirectionCodeString(), si.GetStopNumber().ToString());
             var response = await GetHttpResponse(client, uri);
-            Console.WriteLine("Response: " + response);
+            VerbosePrint("Response: " + response);
             return ScheduleParser.Parse(response, si);
         }
     }
