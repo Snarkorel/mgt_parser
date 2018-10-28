@@ -122,7 +122,8 @@ namespace mgt_parser
             const string ValidityTimeSearchStr = "c</h3></td><td><h3>";
             const string LegendHeaderStr = "<h3>Легенда</h3>";
             const string TagBeginning = "<";
-            const string TdTag = "</td>";
+            const string TdClosingTag = "</td>";
+            const string SpanClosingTag = "</span>";
 
             //<span class=\"hour\">(\d+)</span></td><td align=.*>(.*)</td>
             const string HourSearchStr = "<span class=\"hour\">";
@@ -139,146 +140,147 @@ namespace mgt_parser
 
 
             searchIndex = htmlData.IndexOf(ValidityTimeSearchStr, index);
-            if (searchIndex !=0) //TODO: invert all ifs to reduce nesting, throw exceptions instead
+            if (searchIndex == -1)
+                throw new Exception("Validity time not found!");
+
+            index = searchIndex + ValidityTimeSearchStr.Length;
+            searchIndex = htmlData.IndexOf(TagBeginning, index);
+            if (searchIndex == -1)
+                throw new Exception("Validity time border not found!");
+            
+            var validityStr = htmlData.Substring(index, searchIndex - index);
+            var date = ParseDateTime(validityStr);
+            schedule.SetValidityTime(date);
+            Console.WriteLine("Schedule valid from: " + date.ToString());
+            index = searchIndex;
+
+            //Stop name parsing is not necessary - we should know it from server response?
+
+            //Iterative hours and minutes parsing
+            do
             {
-                index = searchIndex + ValidityTimeSearchStr.Length;
-                searchIndex = htmlData.IndexOf(TagBeginning, index);
+                //Parsing hours
+                searchIndex = htmlData.IndexOf(HourSearchStr, index);
+                if (searchIndex == -1)
+                    break;
+                index = searchIndex;
+                searchIndex = htmlData.IndexOf(TdClosingTag, index);
+
+                //Grey hours will be ignored because they doesn't match to regexp
+                sbyte hour = -1;
+                var hourStr = htmlData.Substring(index, searchIndex - index);
+                var hourMatch = hourRegex.Match(hourStr);
+                if (hourMatch.Length == 0)
+                {
+                    throw new Exception("Failed to find hour info!");
+                }
+                else
+                {
+                    hour = Convert.ToSByte(hourMatch.Groups[1].Value);
+                }
+
+                //Getting substring for all minutes in hour, then searching for all of it
+
+                //Parsing minutes
+                searchIndex = htmlData.IndexOf(MinutesSearchStr, index);
+                index = searchIndex;
+                var minutesBorderIndex = htmlData.IndexOf(TdClosingTag, index);
+                var allMinutesStr = htmlData.Substring(index, minutesBorderIndex - index);
+                var minuteIndex = 0; //local varibles for searching inside minutes substring
+                var minuteSearchIndex = 0;
+
+                while (minuteSearchIndex != -1)
+                {
+                    minuteSearchIndex = allMinutesStr.IndexOf(SpanClosingTag, minuteIndex);
+                    if (minuteSearchIndex == -1)
+                        break;
+                    var minuteStr = allMinutesStr.Substring(minuteIndex, minuteSearchIndex - minuteIndex + SpanClosingTag.Length);
+                    minuteIndex = minuteSearchIndex + SpanClosingTag.Length;
+                    //TODO: parse minutes colors (RouteType)
+                    var minuteMatch = minuteRegex.Match(minuteStr);
+                    if (minuteMatch.Length == 0)
+                    {
+                        throw new Exception("Failed to find minute info!");
+                    }
+                    else
+                    {
+                        var minute = Convert.ToSByte(minuteMatch.Groups[1].Value);
+                        if (hour == -1)
+                            throw new Exception("Hours parser fucked up!");
+                        schedule.AddEntry(new ScheduleEntry(hour, minute)); //TODO RouteType (color)
+                    }
+                }
+
+                //all minutes for current hour found, skipping to next hour
+                index = minutesBorderIndex;
+                searchIndex = index; 
+            }
+            while (searchIndex > 0);
+
+            //TODO: legend parsing
+            searchIndex = htmlData.IndexOf(LegendHeaderStr, index);
+            if (searchIndex != 0)
+            {
+                index = searchIndex + LegendHeaderStr.Length;
+                searchIndex = htmlData.IndexOf(TdClosingTag, index);
                 if (searchIndex != 0)
                 {
-                    var validityStr = htmlData.Substring(index, searchIndex - index);
-                    var date = ParseDateTime(validityStr);
-                    schedule.SetValidityTime(date);
-                    Console.WriteLine("Schedule valid from: " + date.ToString());
-                    index = searchIndex;
+                    var legendData = htmlData.Substring(index, searchIndex - index);
 
-                    //Stop name parsing is not necessary - we should know it from server response?
+                    //.*? for non-greedy match instead of greedy .*
+                    const string noColorsRegexPattern = "<p class=\"helpfile\"><b>(.*)<\\/b>(.*)<\\/p>";
+                    const string colorsRegexPattern = "<p class=\"helpfile\"><b style=\"color: (\\w+)\">(.*?)<\\/b>(.*?)<\\/p>"; //TODO: add support of hex-coded colors!
 
-                    //Iterative hours and minutes parsing
-                    do
+                    //regex should be ungreedy (*? insted of .*)
+                    //regex pattern without colors: <p class="helpfile"><b>(.*)<\/b>(.*)<\/p>
+                    //group1: bold text, group2: non-bold text (check for empty!)
+
+                    var noColorsRegex = new Regex(noColorsRegexPattern);
+                    var matches = noColorsRegex.Matches(legendData);
+
+                    Console.WriteLine("Matching non-colored legend...");
+
+                    if (matches.Count == 0)
+                        Console.WriteLine("Non-colored regex not matched!");
+                    else
                     {
-                        //parse hours
-                        searchIndex = htmlData.IndexOf(HourSearchStr, index);
-                        index = searchIndex;
-                        searchIndex = htmlData.IndexOf(TdTag, index);
-
-                        //TODO: support for grey hours, without minutes
-                        sbyte hour = -1;
-                        var hourStr = htmlData.Substring(index, searchIndex - index);
-                        var hourMatch = hourRegex.Match(hourStr);
-                        if (hourMatch.Length == 0)
+                        foreach (Match match in matches)
                         {
-                            Console.WriteLine("Failed to find hour info!");
-                        }
-                        else
-                        {
-                            hour = Convert.ToSByte(hourMatch.Groups[1].Value);
-                        }
-
-                        //TODO: get substring for all minutes in hour, search for all of it
-
-                        //TODO: parse minutes
-                        //TODO: cycle inside <td>
-                        searchIndex = htmlData.IndexOf(MinutesSearchStr, index);
-                        index = searchIndex;
-                        var minutesBorderIndex = htmlData.IndexOf(TdTag, index);             
-
-                        do
-                        {
-                            var minuteStr = htmlData.Substring(index, searchIndex - index);
-                            var minuteMatch = minuteRegex.Match(minuteStr);
-                            if (minuteMatch.Length == 0)
+                            Console.WriteLine("Match: " + match.Value);
+                            GroupCollection groups = match.Groups;
+                            foreach (Group group in groups)
                             {
-                                Console.WriteLine("Failed to find minute info!");
+                                Console.WriteLine("Group: " + group.Value);
                             }
-                            else
-                            {
-                                var minute = Convert.ToSByte(minuteMatch.Groups[1].Value); //TODO: check it
-                                if (hour == -1)
-                                    throw new Exception("Hours parser fucked up!");
-                                schedule.AddEntry(new ScheduleEntry(hour, minute)); //TODO RouteType (color)
-                            }
-
-                            index = searchIndex;
                         }
-                        while (searchIndex < minutesBorderIndex); //TODO: condition
-
-                        //TODO: parse colors for minutes
-
-                        
-                        
                     }
-                    while (searchIndex > 0);
 
-                    //TODO: legend parsing
-                    searchIndex = htmlData.IndexOf(LegendHeaderStr, index);
-                    if (searchIndex != 0)
+                    Console.WriteLine("Matching colored legend...");
+                    //regex pattern with colors: <p class="helpfile"><b style="color: (\w+)">(.*)<\/b>(.*)<\/p>
+                    //should be multiple matches
+                    //group1: color name, group2: color name in russian (bold text), group3: non-bold text (description)
+
+                    //TODO: non-greedy!
+                    var colorsRegex = new Regex(colorsRegexPattern);
+                    matches = colorsRegex.Matches(legendData);
+
+                    if (matches.Count == 0)
+                        Console.WriteLine("Colored regex not matched!");
+                    else
                     {
-                        index = searchIndex + LegendHeaderStr.Length;
-                        searchIndex = htmlData.IndexOf(TdTag, index);
-                        if (searchIndex != 0)
+                        foreach (Match match in matches)
                         {
-                            var legendData = htmlData.Substring(index, searchIndex - index);
-
-                            //.*? for non-greedy match instead of greedy .*
-                            const string noColorsRegexPattern = "<p class=\"helpfile\"><b>(.*)<\\/b>(.*)<\\/p>";
-                            const string colorsRegexPattern = "<p class=\"helpfile\"><b style=\"color: (\\w+)\">(.*?)<\\/b>(.*?)<\\/p>";
-
-                            //regex should be ungreedy (*? insted of .*)
-                            //regex pattern without colors: <p class="helpfile"><b>(.*)<\/b>(.*)<\/p>
-                            //group1: bold text, group2: non-bold text (check for empty!)
-
-                            var noColorsRegex = new Regex(noColorsRegexPattern);
-                            var matches = noColorsRegex.Matches(legendData);
-
-                            Console.WriteLine("Matching non-colored legend...");
-
-                            if (matches.Count == 0)
-                                Console.WriteLine("Non-colored regex not matched!");
-                            else
+                            Console.WriteLine("Match: " + match.Value);
+                            GroupCollection groups = match.Groups;
+                            foreach (Group group in groups)
                             {
-                                foreach (Match match in matches)
-                                {
-                                    Console.WriteLine("Match: " + match.Value);
-                                    GroupCollection groups = match.Groups;
-                                    foreach (Group group in groups)
-                                    {
-                                        Console.WriteLine("Group: " + group.Value);
-                                    }
-                                }
+                                Console.WriteLine("Group: " + group.Value);
+                                //TODO: schedule.AddSpecialRoute(type, destination);
                             }
-
-                            Console.WriteLine("Matching colored legend...");
-                            //regex pattern with colors: <p class="helpfile"><b style="color: (\w+)">(.*)<\/b>(.*)<\/p>
-                            //should be multiple matches
-                            //group1: color name, group2: color name in russian (bold text), group3: non-bold text (description)
-
-                            //TODO: non-greedy!
-                            var colorsRegex = new Regex(colorsRegexPattern);
-                            matches = colorsRegex.Matches(legendData);
-
-                            if (matches.Count == 0)
-                                Console.WriteLine("Colored regex not matched!");
-                            else
-                            {
-                                foreach (Match match in matches)
-                                {
-                                    Console.WriteLine("Match: " + match.Value);
-                                    GroupCollection groups = match.Groups;
-                                    foreach (Group group in groups)
-                                    {
-                                        Console.WriteLine("Group: " + group.Value);
-                                        //TODO: schedule.AddSpecialRoute(type, destination);
-                                    }
-                                }
-                            }
-
-
-                            //TODO?
                         }
                     }
                 }
             }
-
             return schedule;
         }
 
