@@ -27,15 +27,16 @@ namespace mgt_parser
 
         private static async void TestScheduleParser(HttpClient client)
         {
-            var rawData = await GetSchedule(_client, "avto", "0", "1111100", "AB", "1");
+            //var scheduleInfo = new ScheduleInfo("avto", "0", "1111100", "AB", 1); //simple case
+            //var rawData = await GetSchedule(_client, scheduleInfo);
             //ParseSchedule(rawData);
 
             //rawData = await GetSchedule(_client, "avto", "%C1%D7", "1111100", "AB", "1"); //TODO: convert cyrillic chars to HTML char codes
             //ParseSchedule(rawData);
 
             //shedule.php?type=avto&way=205&date=1111100&direction=AB&waypoint=2
-            rawData = await GetSchedule(_client, "avto", "205", "1111100", "AB", "2");
-            ParseSchedule(rawData);
+            var scheduleInfo = new ScheduleInfo("avto", "205", "1111100", "AB", 2); //complex case with different colors
+            var schedule = await GetSchedule(_client, scheduleInfo);
         }
 
         private static async void GetLists(HttpClient client)
@@ -110,11 +111,14 @@ namespace mgt_parser
         }
 
         //I know that parsing HTML by regex is a bad idea, but objective is not to use third-party parsers
-        private static void ParseSchedule(string htmlData)
+        private static Schedule ParseSchedule(string htmlData, ScheduleInfo si)
         {
-            var index = 0;
-            var searchIndex = 0;
-            string validityStr;
+            var schedule = new Schedule(si);
+            //TODO: dont forget to set stop name and direction name (if it's not obtained earlier)
+
+            var index = 0; //Current position of htmlData processing (shifts if some item is found and parsed)
+            var searchIndex = 0; //Curent position of search ahead of index
+
             const string ValidityTimeSearchStr = "c</h3></td><td><h3>";
             const string LegendHeaderStr = "<h3>Легенда</h3>";
             const string TagBeginning = "<";
@@ -123,35 +127,43 @@ namespace mgt_parser
             //<span class=\"hour\">(\d+)</span></td><td align=.*>(.*)</td>
             const string HourSearchStr = "<span class=\"hour\">";
             const string HourRegexPattern = "<span class=\"hour\">(\\d+)</span>"; //" < span class=\"hour\">(\\d+)</span></td><td align=.*>(.*)</td>";
+            var hourRegex = new Regex(HourRegexPattern);
+            //<span class="minutes" >02</span>
+            //<span class="minutes" style="color: red; font-weight: bold;">37</span><br>
+            const string MinutesSearchStr = "<span class=\"minutes\"";
+            const string MinutesRegexPattern = "<span class=\"minutes\".*>(\\d+)</span>";
+            var minuteRegex = new Regex(MinutesRegexPattern);
 
-
-            //TODO
+            //TODO: remove this later
             Console.WriteLine("TODO TODO TODO - SCHEDULE PARSER IS NOT READY YET");
 
 
             searchIndex = htmlData.IndexOf(ValidityTimeSearchStr, index);
-            if (searchIndex !=0)
+            if (searchIndex !=0) //TODO: invert all ifs to reduce nesting, throw exceptions instead
             {
                 index = searchIndex + ValidityTimeSearchStr.Length;
                 searchIndex = htmlData.IndexOf(TagBeginning, index);
                 if (searchIndex != 0)
                 {
-                    validityStr = htmlData.Substring(index, searchIndex - index);
+                    var validityStr = htmlData.Substring(index, searchIndex - index);
                     var date = ParseDateTime(validityStr);
+                    schedule.SetValidityTime(date);
                     Console.WriteLine("Schedule valid from: " + date.ToString());
                     index = searchIndex;
 
-                    //TODO: iterative hours and minutes parsing
+                    //Stop name parsing is not necessary - we should know it from server response?
+
+                    //Iterative hours and minutes parsing
                     do
                     {
-                        sbyte hour = -1;
+                        //parse hours
                         searchIndex = htmlData.IndexOf(HourSearchStr, index);
                         index = searchIndex;
                         searchIndex = htmlData.IndexOf(TdTag, index);
-                        //TODO
 
-                        var hourRegex = new Regex(HourRegexPattern);
-                        var hourStr = htmlData.Substring(index, searchIndex);
+                        //TODO: support for grey hours, without minutes
+                        sbyte hour = -1;
+                        var hourStr = htmlData.Substring(index, searchIndex - index);
                         var hourMatch = hourRegex.Match(hourStr);
                         if (hourMatch.Length == 0)
                         {
@@ -162,14 +174,40 @@ namespace mgt_parser
                             hour = Convert.ToSByte(hourMatch.Groups[1].Value);
                         }
 
+                        //TODO: get substring for all minutes in hour, search for all of it
 
                         //TODO: parse minutes
-
+                        //TODO: cycle inside <td>
+                        searchIndex = htmlData.IndexOf(MinutesSearchStr, index);
                         index = searchIndex;
+                        var minutesBorderIndex = htmlData.IndexOf(TdTag, index);             
+
+                        do
+                        {
+                            var minuteStr = htmlData.Substring(index, searchIndex - index);
+                            var minuteMatch = minuteRegex.Match(minuteStr);
+                            if (minuteMatch.Length == 0)
+                            {
+                                Console.WriteLine("Failed to find minute info!");
+                            }
+                            else
+                            {
+                                var minute = Convert.ToSByte(minuteMatch.Groups[1].Value); //TODO: check it
+                                if (hour == -1)
+                                    throw new Exception("Hours parser fucked up!");
+                                schedule.AddEntry(new ScheduleEntry(hour, minute)); //TODO RouteType (color)
+                            }
+
+                            index = searchIndex;
+                        }
+                        while (searchIndex < minutesBorderIndex); //TODO: condition
+
+                        //TODO: parse colors for minutes
+
+                        
+                        
                     }
                     while (searchIndex > 0);
-
-                    //TODO: parse colors for minutes
 
                     //TODO: legend parsing
                     searchIndex = htmlData.IndexOf(LegendHeaderStr, index);
@@ -229,16 +267,19 @@ namespace mgt_parser
                                     foreach (Group group in groups)
                                     {
                                         Console.WriteLine("Group: " + group.Value);
+                                        //TODO: schedule.AddSpecialRoute(type, destination);
                                     }
                                 }
                             }
-                            //TODO: schedule.AddSpecialRoute(type, destination);
 
-                            //TODO!
+
+                            //TODO?
                         }
                     }
                 }
             }
+
+            return schedule;
         }
 
         private static DateTime ParseDateTime(string dateStr)
@@ -341,14 +382,13 @@ namespace mgt_parser
             return list;
         }
 
-        private static async Task<string> GetSchedule(HttpClient client, string type, string route, string days, string direction, string stop)
+        private static async Task<Schedule> GetSchedule(HttpClient client, ScheduleInfo si)
         {
             Console.WriteLine("Obtaining schedule for stop");
-            var uri = Uri.GetUri(type, route, days, direction, stop);
+            var uri = Uri.GetUri(si.GetTransportTypeString(), si.GetRouteName(), si.GetDaysOfOperation().ToString(), si.GetDirectionCodeString(), si.GetStopNumber().ToString());
             var response = await GetHttpResponse(client, uri);
             Console.WriteLine("Response: " + response);
-            ParseSchedule(response);
-            return response;
+            return ParseSchedule(response, si);
         }
     }
 }

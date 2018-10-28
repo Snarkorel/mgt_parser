@@ -58,7 +58,7 @@ namespace mgt_parser
             return _daysOfOperation; //TODO: check for null?
         }
 
-        public string GetDaysString()
+        public override string ToString()
         {
             StringBuilder bitString = new StringBuilder();
             for (var i = 0; i < _daysOfOperation.Length; i++)
