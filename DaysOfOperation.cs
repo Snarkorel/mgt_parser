@@ -30,6 +30,7 @@ namespace mgt_parser
     }
     */
 
+    [Serializable]
     public class Days
     {
         private const int DayBitsLength = 7;

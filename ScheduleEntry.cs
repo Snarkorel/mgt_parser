@@ -1,5 +1,8 @@
-﻿namespace mgt_parser
+﻿using System;
+
+namespace mgt_parser
 {
+    [Serializable]
     public class ScheduleEntry
     {
         private int _hour;

@@ -3,6 +3,7 @@ using System;
 
 namespace mgt_parser
 {
+    [Serializable]
     public class Schedule //TODO: IEnumerable?
     {
         private ScheduleInfo _info;

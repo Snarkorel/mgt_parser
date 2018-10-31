@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using System.Net.Http;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.IO;
-using System.Net;
 using System.Text;
 
 namespace mgt_parser
@@ -12,21 +11,31 @@ namespace mgt_parser
     class Program //TODO: in future this should be a class library
     {
         private static HttpClient _client;
-        private static List<Schedule> _schedules;
+        private static List<Schedule> _schedules; //TODO: use DB instead of List
         private static bool _verbose; //TODO: set via command-line arguments
 
         static void Main(string[] args) //TODO: args - verbose (for debug output), load (for saved schedule loading and deserializing), void (for requesting server without saving output)
         {
             VerbosePrint("Starting");
             _client = new HttpClient();
-            //_schedules = new List<Schedule>();
+            
             _verbose = true;
-            var task = GetLists(_client);
+
+
+            //commented due to test
+            //var task = GetLists(_client);
+            //task.Wait();
+            //_schedules = task.Result;
+
+            //SINGLE SCHEDULE TEST
+            _schedules = new List<Schedule>();
+            var task = TestSingleSchedule(_client);
             task.Wait();
-            _schedules = task.Result;
+            _schedules.Add(task.Result);
 
             //Serialization of results
-            var filename = (DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds + ".dat";
+            var time = DateTime.Now;
+            var filename = string.Format("{0}{1}{2}_{3}{4}{5}.dat", time.Year, time.Month, time.Day, time.Hour, time.Minute, time.Second);
             using (FileStream file = new FileStream(filename, FileMode.Create))
             {
                 BinaryFormatter formatter = new BinaryFormatter();
@@ -47,7 +56,14 @@ namespace mgt_parser
             //var testTask = TestScheduleParser(_client);
             //testTask.Wait();
 
-            while (true) { };
+            return;
+        }
+
+        private static async Task<Schedule> TestSingleSchedule(HttpClient client)
+        {
+            var scheduleInfo = new ScheduleInfo("avto", "205", "1111100", "AB", 2);
+            var schedule = await GetSchedule(_client, scheduleInfo);
+            return schedule;
         }
 
         private static async Task TestScheduleParser(HttpClient client)
@@ -176,7 +192,7 @@ namespace mgt_parser
                 var responseBody = await response.Content.ReadAsStringAsync();
                 //VerbosePrint(responseBody);
                 if (responseBody.Length == 0)
-                    VerbosePrint("FAIL: EMPTY RESPONSE"); //TODO: exception
+                    throw new Exception("Empty response");
                 return responseBody;
             }
             catch (Exception e)
@@ -229,12 +245,10 @@ namespace mgt_parser
                 var b = (char)bytes[i];
                 if (b < 0x80) //first 128 chars is default ASCII symbols
                 {
-                    //TODO
                     encoded += System.Uri.EscapeDataString(new string(b, 1));
                 }
                 else
                 {
-                    //TODO
                     encoded += System.Uri.HexEscape(b);
                 }
             }
@@ -250,7 +264,7 @@ namespace mgt_parser
             var encodedRoute = EncodeCyrillicUri(name);
 
             var uri = Uri.GetUri(si.GetTransportTypeString(), encodedRoute, si.GetDaysOfOperation().ToString(), si.GetDirectionCodeString(), si.GetStopNumber().ToString());
-            var response = await GetHttpResponse(client, uri);
+            var response = await GetHttpResponse(client, uri); //TODO: handle response errors
             //VerbosePrint("Response: " + response);
             return ScheduleParser.Parse(response, si);
         }

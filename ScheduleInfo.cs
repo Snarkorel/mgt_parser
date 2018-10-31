@@ -1,5 +1,8 @@
-﻿namespace mgt_parser
+﻿using System;
+
+namespace mgt_parser
 {
+    [Serializable]
     public class ScheduleInfo
     {
         private TransportType _transportType;
