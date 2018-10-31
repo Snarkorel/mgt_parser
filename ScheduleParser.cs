@@ -7,6 +7,7 @@ namespace mgt_parser
     public static class ScheduleParser
     {
         //I know that parsing HTML by regex is a bad idea, but objective is not to use third-party parsers
+        //TODO: clean debug output to console
         public static Schedule Parse(string htmlData, ScheduleInfo si)
         {
             var schedule = new Schedule(si);
@@ -33,6 +34,8 @@ namespace mgt_parser
             var minuteRegex = new Regex(MinutesRegexPattern);
 
             //Starting routine
+
+            //TODO: error and 404 handling, handling of empty routes
 
             searchIndex = htmlData.IndexOf(ValidityTimeSearchStr, index);
             if (searchIndex == -1)
@@ -150,12 +153,12 @@ namespace mgt_parser
                             //normally we shouldn't be there. This output just for debugging purposes and should be removed later (TODO)
                             foreach (Match match in matches)
                             {
-                                Console.WriteLine("Match: " + match.Value);
-                                GroupCollection groups = match.Groups;
-                                foreach (Group group in groups)
-                                {
-                                    Console.WriteLine("Group: " + group.Value);
-                                }
+                                //Console.WriteLine("Match: " + match.Value);
+                                //GroupCollection groups = match.Groups;
+                                //foreach (Group group in groups)
+                                //{
+                                //    Console.WriteLine("Group: " + group.Value);
+                                //}
                             }
                         }
 

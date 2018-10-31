@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 using System.Net.Http;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.IO;
+using System.Net;
+using System.Text;
 
 namespace mgt_parser
 {
@@ -17,17 +19,21 @@ namespace mgt_parser
         {
             VerbosePrint("Starting");
             _client = new HttpClient();
-            _schedules = new List<Schedule>();
-            //GetLists(_client);
+            //_schedules = new List<Schedule>();
+            _verbose = true;
+            var task = GetLists(_client);
+            task.Wait();
+            _schedules = task.Result;
+
             //Serialization of results
-            //var filename = (DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds + ".dat";
-            //using (FileStream file = new FileStream(filename, FileMode.Create))
-            //{
-            //    BinaryFormatter formatter = new BinaryFormatter();
-            //    formatter.Serialize(file, _schedules);
-            //    file.Close();
-            //}
-            //VerbosePrint("Finishing"); //TODO: wait for async completion
+            var filename = (DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds + ".dat";
+            using (FileStream file = new FileStream(filename, FileMode.Create))
+            {
+                BinaryFormatter formatter = new BinaryFormatter();
+                formatter.Serialize(file, _schedules);
+                file.Close();
+            }
+            VerbosePrint("Finishing"); //TODO: wait for async completion
 
             //Deserialization of results - uncomment when "-load" argument will be supported
             //filename = args...
@@ -38,12 +44,13 @@ namespace mgt_parser
             //}
 
             //TEST
-            TestScheduleParser(_client);
+            //var testTask = TestScheduleParser(_client);
+            //testTask.Wait();
 
             while (true) { };
         }
 
-        private static async void TestScheduleParser(HttpClient client)
+        private static async Task TestScheduleParser(HttpClient client)
         {
             //shedule.php?type=avto&way=0&date=1111100&direction=AB&waypoint=1
             var scheduleInfo = new ScheduleInfo("avto", "0", "1111100", "AB", 1); //simple case
@@ -64,8 +71,11 @@ namespace mgt_parser
                 Console.WriteLine(str);
         }
 
-        private static async void GetLists(HttpClient client)
+        //TODO: clean debug output to console?
+
+        private static async Task<List<Schedule>> GetLists(HttpClient client)
         {
+            var schedules = new List<Schedule>();
             var routesCount = new int[TrType.TransportTypes.Length];
             var maxStops = 0;
             string maxStopsRoute = "";
@@ -111,9 +121,19 @@ namespace mgt_parser
 
                                 //TODO: multithreading
 
-                                var scheduleInfo = new ScheduleInfo(type, route, day, dir, direction, stopNum, stops[stopNum]);
-                                var schedule = await GetSchedule(client, scheduleInfo);
-                                _schedules.Add(schedule);
+                                //TEST
+                                try
+                                {
+                                    var scheduleInfo = new ScheduleInfo(type, route, day, dir, direction, stopNum, stops[stopNum]);
+                                    var schedule = await GetSchedule(client, scheduleInfo);
+                                    schedules.Add(schedule);
+                                }
+                                catch (Exception ex) //TEST
+                                {
+                                    VerbosePrint("EXCEPTION OCCURED: " + ex.Message);
+                                    continue;
+                                }
+                                
                             }
                         }
                     }
@@ -127,6 +147,8 @@ namespace mgt_parser
                 VerbosePrint(string.Format("Count of {0} routes: {1}", ((TransportType)t).ToString(), routesCount[t]));
             }
             VerbosePrint(string.Format("{0} route number {1} have absolute maximum of stops count: {2}", maxStopsTransport.ToString(), maxStopsRoute, maxStops));
+
+            return schedules;
         }
 
         private static async Task<List<string>> GetListHttpResponse(HttpClient client, string uri)
@@ -196,12 +218,40 @@ namespace mgt_parser
             return list;
         }
 
+        private static string EncodeCyrillicUri(string str)
+        {
+            var encoding = Encoding.Default;
+            var bytes = encoding.GetBytes(str);
+
+            var encoded = string.Empty;
+            for (var i = 0; i < str.Length; i++)
+            {
+                var b = (char)bytes[i];
+                if (b < 0x80) //first 128 chars is default ASCII symbols
+                {
+                    //TODO
+                    encoded += System.Uri.EscapeDataString(new string(b, 1));
+                }
+                else
+                {
+                    //TODO
+                    encoded += System.Uri.HexEscape(b);
+                }
+            }
+
+            return encoded;
+        }
+
         private static async Task<Schedule> GetSchedule(HttpClient client, ScheduleInfo si)
         {
             VerbosePrint("Obtaining schedule for stop");
-            var uri = Uri.GetUri(si.GetTransportTypeString(), si.GetRouteName(), si.GetDaysOfOperation().ToString(), si.GetDirectionCodeString(), si.GetStopNumber().ToString());
+            //encode cyrillic characters in route name, if they are present
+            var name = si.GetRouteName();
+            var encodedRoute = EncodeCyrillicUri(name);
+
+            var uri = Uri.GetUri(si.GetTransportTypeString(), encodedRoute, si.GetDaysOfOperation().ToString(), si.GetDirectionCodeString(), si.GetStopNumber().ToString());
             var response = await GetHttpResponse(client, uri);
-            VerbosePrint("Response: " + response);
+            //VerbosePrint("Response: " + response);
             return ScheduleParser.Parse(response, si);
         }
     }
