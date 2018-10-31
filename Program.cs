@@ -19,19 +19,17 @@ namespace mgt_parser
             VerbosePrint("Starting");
             _client = new HttpClient();
             
-            _verbose = true;
+            _verbose = true; //TEST
 
-
-            //commented due to test
-            //var task = GetLists(_client);
-            //task.Wait();
-            //_schedules = task.Result;
+            var task = GetLists(_client);
+            task.Wait();
+            _schedules = task.Result;
 
             //SINGLE SCHEDULE TEST
-            _schedules = new List<Schedule>();
-            var task = TestSingleSchedule(_client);
-            task.Wait();
-            _schedules.Add(task.Result);
+            //_schedules = new List<Schedule>();
+            //var task = TestSingleSchedule(_client);
+            //task.Wait();
+            //_schedules.Add(task.Result);
 
             //Serialization of results
             var time = DateTime.Now;
@@ -77,7 +75,7 @@ namespace mgt_parser
             schedule = await GetSchedule(_client, scheduleInfo);
 
             //shedule.php?type=avto&way=%C1%CA&date=1111100&direction=AB&waypoint=1
-            scheduleInfo = new ScheduleInfo("avto", "%C1%CA", "1111100", "AB", 1); //TODO: convert cyrillic chars to HTML char codes
+            scheduleInfo = new ScheduleInfo("avto", "%C1%CA", "1111100", "AB", 1);
             schedule = await GetSchedule(_client, scheduleInfo);
         }
 
@@ -142,7 +140,8 @@ namespace mgt_parser
                                 {
                                     var scheduleInfo = new ScheduleInfo(type, route, day, dir, direction, stopNum, stops[stopNum]);
                                     var schedule = await GetSchedule(client, scheduleInfo);
-                                    schedules.Add(schedule);
+                                    if (schedule != null)
+                                        schedules.Add(schedule);
                                 }
                                 catch (Exception ex) //TEST
                                 {
@@ -265,6 +264,8 @@ namespace mgt_parser
 
             var uri = Uri.GetUri(si.GetTransportTypeString(), encodedRoute, si.GetDaysOfOperation().ToString(), si.GetDirectionCodeString(), si.GetStopNumber().ToString());
             var response = await GetHttpResponse(client, uri); //TODO: handle response errors
+            if (response.Length == 0)
+                return null;
             //VerbosePrint("Response: " + response);
             return ScheduleParser.Parse(response, si);
         }
