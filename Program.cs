@@ -32,18 +32,18 @@ namespace mgt_parser
             //_schedules.Add(task.Result);
 
             //Serialization of results
-            var time = DateTime.Now;
-            var filename = string.Format("{0}{1}{2}_{3}{4}{5}.dat", time.Year, time.Month, time.Day, time.Hour, time.Minute, time.Second);
-            using (FileStream file = new FileStream(filename, FileMode.Create))
-            {
-                BinaryFormatter formatter = new BinaryFormatter();
-                formatter.Serialize(file, _schedules);
-                file.Close();
-            }
-            VerbosePrint("Finishing"); //TODO: wait for async completion
+            //var time = DateTime.Now;
+            //var filename = string.Format("{0}{1}{2}_{3}{4}{5}.dat", time.Year, time.Month, time.Day, time.Hour, time.Minute, time.Second);
+            //using (FileStream file = new FileStream(filename, FileMode.Create))
+            //{
+            //    BinaryFormatter formatter = new BinaryFormatter();
+            //    formatter.Serialize(file, _schedules);
+            //    file.Close();
+            //}
+
 
             //Deserialization of results - uncomment when "-load" argument will be supported
-            //filename = args...
+            //var filename = "20181031_201956.dat";
             //using (FileStream file = new FileStream(filename, FileMode.Open))
             //{
             //    BinaryFormatter formatter = new BinaryFormatter();
@@ -53,6 +53,8 @@ namespace mgt_parser
             //TEST
             //var testTask = TestScheduleParser(_client);
             //testTask.Wait();
+
+            VerbosePrint("Finishing");
 
             return;
         }
@@ -85,8 +87,6 @@ namespace mgt_parser
                 Console.WriteLine(str);
         }
 
-        //TODO: clean debug output to console?
-
         private static async Task<List<Schedule>> GetLists(HttpClient client)
         {
             var schedules = new List<Schedule>();
@@ -102,26 +102,31 @@ namespace mgt_parser
                 var routes = await GetRoutesList(_client, type);
                 foreach(var route in routes)
                 {
-                    routesCount[i]++;
+                    routesCount[i]++; //TODO: remove that later
+
                     VerbosePrint("\tFound route: " + route);
                     var days = await GetDaysOfOperation(client, type, route);
+                    if (days.Count == 0)
+                        continue; //skip faulty routes without anything ("route", "streets", "stations")
+                    
                     foreach(var day in days)
                     {
                         VerbosePrint("\t\tWorks on " + day);
                         //Direction names is not necessary, using AB/BA instead for iterating
                         var directions = await GetDirections(client, type, route, day);
-                        foreach(var direction in directions)
-                        {
-                            VerbosePrint("\t\t\tFound direction: " + direction);
-                        }
+                        if (directions.Count == 0) 
+                            continue; //skip faulty routes without directions (just in case if they appear in Mosgortans schedules)
 
-                        for(var j = 0; j < Direction.Directions.Length; j++)
+                        for (var j = 0; j < Direction.Directions.Length; j++)
                         {
-                            var dir = Direction.Directions[j];
+                            var dirCode = Direction.Directions[j];
                             var direction = directions[j];
-                            var stops = await GetStops(client, type, route, day, dir);
+                            VerbosePrint("\t\t\tFound direction: " + direction);
+                            var stops = await GetStops(client, type, route, day, dirCode);
+                            if (stops.Count == 0)
+                                continue; //skip faulty routes without stops (this can occur when new routes are added to database, but without schedules)
 
-                            //some statistics
+                            //some statistics. TODO: remove later
                             if (stops.Count > maxStops)
                             {
                                 maxStops = stops.Count;
@@ -138,7 +143,7 @@ namespace mgt_parser
                                 //TEST
                                 try
                                 {
-                                    var scheduleInfo = new ScheduleInfo(type, route, day, dir, direction, stopNum, stops[stopNum]);
+                                    var scheduleInfo = new ScheduleInfo(type, route, day, dirCode, direction, stopNum, stops[stopNum]);
                                     var schedule = await GetSchedule(client, scheduleInfo);
                                     if (schedule != null)
                                         schedules.Add(schedule);
@@ -155,6 +160,7 @@ namespace mgt_parser
                 }
             }
 
+            //TODO: remove statistics later
             VerbosePrint("Now _schedules list should contain all found schedules");
             VerbosePrint("Statistics:");
             for (var t = 0; t < routesCount.Length; t++)

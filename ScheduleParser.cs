@@ -142,27 +142,27 @@ namespace mgt_parser
                     var noColorsRegex = new Regex(noColorsRegexPattern);
                     var matches = noColorsRegex.Matches(legendData);
 
-                    Console.WriteLine("Matching non-colored legend...");
+                    //Console.WriteLine("Matching non-colored legend...");
 
-                    if (matches.Count == 0)
-                        Console.WriteLine("Non-colored regex not matched!");
-                    else
-                    {
-                        if (legendData.IndexOf(NoDataForLegend) == -1)
-                        {
-                            //normally we shouldn't be there. This output just for debugging purposes and should be removed later (TODO)
-                            foreach (Match match in matches)
-                            {
-                                //Console.WriteLine("Match: " + match.Value);
-                                //GroupCollection groups = match.Groups;
-                                //foreach (Group group in groups)
-                                //{
-                                //    Console.WriteLine("Group: " + group.Value);
-                                //}
-                            }
-                        }
+                    //if (matches.Count == 0)
+                    //    Console.WriteLine("Non-colored regex not matched!");
+                    //else
+                    //{
+                    //    if (legendData.IndexOf(NoDataForLegend) == -1)
+                    //    {
+                    //        //normally we shouldn't be there. This output just for debugging purposes and should be removed later (TODO)
+                    //        foreach (Match match in matches)
+                    //        {
+                    //            //Console.WriteLine("Match: " + match.Value);
+                    //            //GroupCollection groups = match.Groups;
+                    //            //foreach (Group group in groups)
+                    //            //{
+                    //            //    Console.WriteLine("Group: " + group.Value);
+                    //            //}
+                    //        }
+                    //    }
 
-                    }
+                    //}
 
                     Console.WriteLine("Matching colored legend...");
                     //regex pattern with colors: <p class="helpfile"><b style="color: (\w+)">(.*)<\/b>(.*)<\/p>
