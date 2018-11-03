@@ -100,9 +100,6 @@ namespace mgt_parser
             using (FileStream file = new FileStream(filename, FileMode.Create))
             using (StreamWriter sw = new StreamWriter(file))
             {
-
-
-
                 for (var i = 0; i < TrType.TransportTypes.Length; i++)
                 {
                     var type = TrType.TransportTypes[i];
@@ -192,9 +189,10 @@ namespace mgt_parser
                             }
                         }
                     }
-
-                    file.Close();
                 }
+                sw.Flush();
+                sw.Close();
+                file.Close();
             }
 
             //TODO: remove statistics later
