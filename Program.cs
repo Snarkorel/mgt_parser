@@ -11,7 +11,7 @@ namespace mgt_parser
     class Program //TODO: in future this should be a class library
     {
         private static HttpClient _client;
-        private static List<Schedule> _schedules; //TODO: use DB instead of List
+        //private static List<Schedule> _schedules; //TODO: use DB instead of List
         private static bool _verbose; //TODO: set via command-line arguments
 
         static void Main(string[] args) //TODO: args - verbose (for debug output), load (for saved schedule loading and deserializing), void (for requesting server without saving output)
@@ -23,7 +23,7 @@ namespace mgt_parser
 
             var task = GetLists(_client);
             task.Wait();
-            _schedules = task.Result;
+            //_schedules = task.Result;
 
             //SINGLE SCHEDULE TEST
             //_schedules = new List<Schedule>();
@@ -87,76 +87,113 @@ namespace mgt_parser
                 Console.WriteLine(str);
         }
 
-        private static async Task<List<Schedule>> GetLists(HttpClient client)
+        private static async Task/*<List<Schedule>>*/ GetLists(HttpClient client)
         {
-            var schedules = new List<Schedule>();
+            //var schedules = new List<Schedule>();
             var routesCount = new int[TrType.TransportTypes.Length];
             var maxStops = 0;
             string maxStopsRoute = "";
             TransportType maxStopsTransport = TransportType.Bus;
 
-            for (var i = 0; i < TrType.TransportTypes.Length; i++)
+            var time = DateTime.Now;
+            var filename = string.Format("{0}{1}{2}_{3}{4}{5}.csv", time.Year, time.Month, time.Day, time.Hour, time.Minute, time.Second);
+            using (FileStream file = new FileStream(filename, FileMode.Create))
+            using (StreamWriter sw = new StreamWriter(file))
             {
-                var type = TrType.TransportTypes[i];
-                VerbosePrint("Obtaining routes for " + type);
-                var routes = await GetRoutesList(_client, type);
-                foreach(var route in routes)
+
+
+
+                for (var i = 0; i < TrType.TransportTypes.Length; i++)
                 {
-                    routesCount[i]++; //TODO: remove that later
-
-                    VerbosePrint("\tFound route: " + route);
-                    var days = await GetDaysOfOperation(client, type, route);
-                    if (days.Count == 0)
-                        continue; //skip faulty routes without anything ("route", "streets", "stations")
-                    
-                    foreach(var day in days)
+                    var type = TrType.TransportTypes[i];
+                    VerbosePrint("Obtaining routes for " + type);
+                    var routes = await GetRoutesList(_client, type);
+                    foreach (var route in routes)
                     {
-                        VerbosePrint("\t\tWorks on " + day);
-                        //Direction names is not necessary, using AB/BA instead for iterating
-                        var directions = await GetDirections(client, type, route, day);
-                        if (directions.Count == 0) 
-                            continue; //skip faulty routes without directions (just in case if they appear in Mosgortans schedules)
+                        routesCount[i]++; //TODO: remove that later
 
-                        for (var j = 0; j < Direction.Directions.Length; j++)
+                        VerbosePrint("\tFound route: " + route);
+                        var days = await GetDaysOfOperation(client, type, route);
+                        if (days.Count == 0)
+                            continue; //skip faulty routes without anything ("route", "streets", "stations")
+
+                        foreach (var day in days)
                         {
-                            var dirCode = Direction.Directions[j];
-                            var direction = directions[j];
-                            VerbosePrint("\t\t\tFound direction: " + direction);
-                            var stops = await GetStops(client, type, route, day, dirCode);
-                            if (stops.Count == 0)
-                                continue; //skip faulty routes without stops (this can occur when new routes are added to database, but without schedules)
+                            VerbosePrint("\t\tWorks on " + day);
+                            //Direction names is not necessary, using AB/BA instead for iterating
+                            var directions = await GetDirections(client, type, route, day);
+                            if (directions.Count == 0)
+                                continue; //skip faulty routes without directions (just in case if they appear in Mosgortans schedules)
 
-                            //some statistics. TODO: remove later
-                            if (stops.Count > maxStops)
+                            for (var j = 0; j < Direction.Directions.Length; j++)
                             {
-                                maxStops = stops.Count;
-                                maxStopsRoute = route;
-                                maxStopsTransport = (TransportType)i;
-                            }
+                                var dirCode = Direction.Directions[j];
+                                var direction = directions[j];
+                                VerbosePrint("\t\t\tFound direction: " + direction);
+                                var stops = await GetStops(client, type, route, day, dirCode);
+                                if (stops.Count == 0)
+                                    continue; //skip faulty routes without stops (this can occur when new routes are added to database, but without schedules)
 
-                            for (var stopNum = 0; stopNum < stops.Count; stopNum++)
-                            {
-                                VerbosePrint("\t\t\t\tFound stop: " + stops[stopNum]);
-
-                                //TODO: multithreading
-
-                                //TEST
-                                try
+                                //some statistics. TODO: remove later
+                                if (stops.Count > maxStops)
                                 {
-                                    var scheduleInfo = new ScheduleInfo(type, route, day, dirCode, direction, stopNum, stops[stopNum]);
-                                    var schedule = await GetSchedule(client, scheduleInfo);
-                                    if (schedule != null)
-                                        schedules.Add(schedule);
+                                    maxStops = stops.Count;
+                                    maxStopsRoute = route;
+                                    maxStopsTransport = (TransportType)i;
                                 }
-                                catch (Exception ex) //TEST
+
+                                for (var stopNum = 0; stopNum < stops.Count; stopNum++)
                                 {
-                                    VerbosePrint("EXCEPTION OCCURED: " + ex.Message);
-                                    continue;
+                                    VerbosePrint("\t\t\t\tFound stop: " + stops[stopNum]);
+
+                                    //TODO: multithreading
+
+                                    //TEST
+                                    try
+                                    {
+                                        var scheduleInfo = new ScheduleInfo(type, route, day, dirCode, direction, stopNum, stops[stopNum]);
+                                        var schedule = await GetSchedule(client, scheduleInfo);
+                                        if (schedule != null)
+                                        {
+                                            //schedules.Add(schedule);
+                                            //var csvStr = FormatCSVString(schedule);
+
+                                            //TEMP: save to CSV
+                                            foreach(var entry in schedule.GetEntries())
+                                            {
+                                                var formatStr = "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11}";
+                                                var si = schedule.GetInfo();
+                                                var tType = si.GetTransportTypeString();
+                                                var rName = si.GetRouteName();
+                                                var ds = si.GetDaysOfOperation().ToString();
+                                                var dc = si.GetDirectionCodeString();
+                                                var dn = si.GetDirectionName();
+                                                var snum = si.GetStopNumber();
+                                                var sname = si.GetStopName();
+                                                var valDat = schedule.GetValidityTime().ToString("dd.MM.yyyy");
+                                                var hour = entry.GetHour();
+                                                var min = entry.GetMinute();
+                                                var rType = entry.GetRouteType();
+                                                var rDest = schedule.GetSpecialRoute(rType);
+                                                var csvStr = string.Format(formatStr, tType, rName, ds, dc, dn, snum, sname, valDat, hour, min, rType, rDest);
+                                                sw.WriteLine(csvStr);
+                                            }
+
+                                            
+                                        }
+                                    }
+                                    catch (Exception ex) //TEST
+                                    {
+                                        VerbosePrint("EXCEPTION OCCURED: " + ex.Message);
+                                        continue;
+                                    }
+
                                 }
-                                
                             }
                         }
                     }
+
+                    file.Close();
                 }
             }
 
@@ -169,7 +206,7 @@ namespace mgt_parser
             }
             VerbosePrint(string.Format("{0} route number {1} have absolute maximum of stops count: {2}", maxStopsTransport.ToString(), maxStopsRoute, maxStops));
 
-            return schedules;
+            //return schedules;
         }
 
         private static async Task<List<string>> GetListHttpResponse(HttpClient client, string uri)
