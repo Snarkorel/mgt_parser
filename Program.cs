@@ -158,7 +158,7 @@ namespace mgt_parser
                                             //TEMP: save to CSV
                                             foreach(var entry in schedule.GetEntries())
                                             {
-                                                var formatStr = "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11}";
+                                                var formatStr = "{0};{1};{2};{3};'{4}';{5};'{6}';{7};{8};{9};{10};'{11}'";
                                                 var si = schedule.GetInfo();
                                                 var tType = si.GetTransportTypeString();
                                                 var rName = si.GetRouteName();
