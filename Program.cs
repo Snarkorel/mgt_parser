@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Net.Http;
-//using System.Runtime.Serialization.Formatters.Binary;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -22,14 +21,14 @@ namespace mgt_parser
         private static Thread _outputThread;
         private static int _threadsCnt = 12; //TODO: this count should be set via command-line arguments
         private static bool _outputFinish; //TODO: use events
-        private static readonly int _sleepTime = 2;
+        private static readonly int _sleepTime = 5;
 
         static void Main(string[] args) //TODO: args - verbose (for debug output), threadcount
         {
             VerbosePrint("Starting");
             _client = new HttpClient();
 
-            //_verbose = true; //TEST
+            _verbose = true; //TEST
 
             _outputThread = new Thread(OutputThread);
             _outputThread.Start();
@@ -43,9 +42,7 @@ namespace mgt_parser
 
             var task = GetLists(_client);
             task.Wait();
-
-
-
+                       
             //wait for threads completion
             VerbosePrint("Waiting for parse threads completion");
             int siCnt = 0;
@@ -62,9 +59,7 @@ namespace mgt_parser
             {
                 _parseThreads[i].Abort();
             }
-
-
-
+                       
             VerbosePrint("Waiting for output thread completion");
             int outCnt = 0;
             do
@@ -78,37 +73,6 @@ namespace mgt_parser
             while (outCnt != 0); //TODO: wait for file write & close. Add event?
             _outputFinish = true;
             _outputThread.Abort();
-
-            //_schedules = task.Result;
-
-            //SINGLE SCHEDULE TEST
-            //_schedules = new List<Schedule>();
-            //var task = TestSingleSchedule(_client);
-            //task.Wait();
-            //_schedules.Add(task.Result);
-
-            //Serialization of results
-            //var time = DateTime.Now;
-            //var filename = string.Format("{0}{1}{2}_{3}{4}{5}.dat", time.Year, time.Month, time.Day, time.Hour, time.Minute, time.Second);
-            //using (FileStream file = new FileStream(filename, FileMode.Create))
-            //{
-            //    BinaryFormatter formatter = new BinaryFormatter();
-            //    formatter.Serialize(file, _schedules);
-            //    file.Close();
-            //}
-
-
-            //Deserialization of results - uncomment when "-load" argument will be supported
-            //var filename = "20181031_201956.dat";
-            //using (FileStream file = new FileStream(filename, FileMode.Open))
-            //{
-            //    BinaryFormatter formatter = new BinaryFormatter();
-            //    _schedules = (List<Schedule>)formatter.Deserialize(file);
-            //}
-
-            //TEST
-            //var testTask = TestScheduleParser(_client);
-            //testTask.Wait();
 
             VerbosePrint("Finishing");
 
@@ -132,7 +96,6 @@ namespace mgt_parser
                     Thread.Sleep(_sleepTime);
                 };
 
-                //TODO: check for null?
                 var schedule = await GetSchedule(_client, scheduleInfo);
                 if (schedule != null)
                 {
@@ -166,7 +129,7 @@ namespace mgt_parser
         private static void OutputThread() //TODO: thread aborted event
         {
             var time = DateTime.Now;
-            var filename = string.Format("{0}{1}{2}_{3}{4}{5}.csv", time.Year, time.Month, time.Day, time.Hour, time.Minute, time.Second);
+            var filename = string.Format("{0:D4}{1:D2}{2:D2}_{3:D2}{4:D2}{5:D2}.csv", time.Year, time.Month, time.Day, time.Hour, time.Minute, time.Second);
 
             using (FileStream file = new FileStream(filename, FileMode.Create))
             using (StreamWriter sw = new StreamWriter(file))
@@ -198,44 +161,14 @@ namespace mgt_parser
             }
         }
 
-        //private static async Task<Schedule> TestSingleSchedule(HttpClient client)
-        //{
-        //    var scheduleInfo = new ScheduleInfo("avto", "205", "1111100", "AB", 2);
-        //    var schedule = await GetSchedule(_client, scheduleInfo);
-        //    return schedule;
-        //}
-
-        //private static async Task TestScheduleParser(HttpClient client)
-        //{
-        //    //shedule.php?type=avto&way=0&date=1111100&direction=AB&waypoint=1
-        //    var scheduleInfo = new ScheduleInfo("avto", "0", "1111100", "AB", 1); //simple case
-        //    var schedule = await GetSchedule(_client, scheduleInfo);
-          
-        //    //shedule.php?type=avto&way=205&date=1111100&direction=AB&waypoint=2
-        //    scheduleInfo = new ScheduleInfo("avto", "205", "1111100", "AB", 2); //complex case with different colors
-        //    schedule = await GetSchedule(_client, scheduleInfo);
-
-        //    //shedule.php?type=avto&way=%C1%CA&date=1111100&direction=AB&waypoint=1
-        //    scheduleInfo = new ScheduleInfo("avto", "%C1%CA", "1111100", "AB", 1);
-        //    schedule = await GetSchedule(_client, scheduleInfo);
-        //}
-
         private static void VerbosePrint(string str)
         {
             if (_verbose)
                 Console.WriteLine(str);
         }
 
-        private static async Task/*<List<Schedule>>*/ GetLists(HttpClient client)
-        {
-            //var schedules = new List<Schedule>();
-            var routesCount = new int[TrType.TransportTypes.Length];
-            var maxStops = 0;
-            string maxStopsRoute = "";
-            TransportType maxStopsTransport = TransportType.Bus;
-
-            
-            
+        private static async Task GetLists(HttpClient client)
+        {           
             for (var i = 0; i < TrType.TransportTypes.Length; i++)
             {
                 var type = TrType.TransportTypes[i];
@@ -243,8 +176,6 @@ namespace mgt_parser
                 var routes = await GetRoutesList(_client, type);
                 foreach (var route in routes)
                 {
-                    routesCount[i]++; //TODO: remove that later
-
                     VerbosePrint("\tFound route: " + route);
                     var days = await GetDaysOfOperation(client, type, route);
                     if (days.Count == 0)
@@ -266,14 +197,6 @@ namespace mgt_parser
                             var stops = await GetStops(client, type, route, day, dirCode);
                             if (stops.Count == 0)
                                 continue; //skip faulty routes without stops (this can occur when new routes are added to database, but without schedules)
-
-                            //some statistics. TODO: remove later
-                            if (stops.Count > maxStops)
-                            {
-                                maxStops = stops.Count;
-                                maxStopsRoute = route;
-                                maxStopsTransport = (TransportType)i;
-                            }
 
                             for (var stopNum = 0; stopNum < stops.Count; stopNum++)
                             {
@@ -305,10 +228,7 @@ namespace mgt_parser
         {
             var resp = await GetHttpResponse(client, uri);
             var strArr = new List<string>(resp.Split('\n'));
-            //foreach (var str in strArr)
-            //{
-            //    str.TrimEnd('\r', '\n');
-            //}
+
             if (strArr[strArr.Count - 1] == string.Empty)
             {
                 strArr.RemoveAt(strArr.Count - 1);
@@ -324,7 +244,6 @@ namespace mgt_parser
                 var response = await client.GetAsync(uri);
                 response.EnsureSuccessStatusCode();
                 var responseBody = await response.Content.ReadAsStringAsync();
-                //VerbosePrint(responseBody);
                 if (responseBody.Length == 0)
                     throw new Exception("Empty response");
                 return responseBody;
@@ -401,7 +320,7 @@ namespace mgt_parser
             var response = await GetHttpResponse(client, uri); //TODO: handle response errors
             if (response.Length == 0)
                 return null;
-            //VerbosePrint("Response: " + response);
+
             return ScheduleParser.Parse(response, si);
         }
     }

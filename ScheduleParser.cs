@@ -49,7 +49,7 @@ namespace mgt_parser
             var validityStr = htmlData.Substring(index, searchIndex - index);
             var date = ParseDateTime(validityStr);
             schedule.SetValidityTime(date);
-            Console.WriteLine("Schedule valid from: " + date.ToString());
+            //Console.WriteLine("Schedule valid from: " + date.ToString());
             index = searchIndex;
 
             //Stop name parsing is not necessary - we should know it from server response?
@@ -164,7 +164,7 @@ namespace mgt_parser
 
                     //}
 
-                    Console.WriteLine("Matching colored legend...");
+                    //Console.WriteLine("Matching colored legend...");
                     //regex pattern with colors: <p class="helpfile"><b style="color: (\w+)">(.*)<\/b>(.*)<\/p>
                     //should be multiple matches
                     //group1: color name, group2: color name in russian (bold text), group3: non-bold text (description)
@@ -172,13 +172,11 @@ namespace mgt_parser
                     var colorsRegex = new Regex(colorsRegexPattern);
                     matches = colorsRegex.Matches(legendData);
 
-                    if (matches.Count == 0)
-                        Console.WriteLine("Colored regex not matched!");
-                    else
+                    if (matches.Count != 0)
                     {
                         foreach (Match match in matches)
                         {
-                            Console.WriteLine("Match: " + match.Value);
+                            //Console.WriteLine("Match: " + match.Value);
                             GroupCollection groups = match.Groups;
                             var type = RouteTypeProvider.GetRouteType(groups[1].Value);
                             var destinationRaw = groups[3].Value; //TODO: change regexp, no need in russian name of color
@@ -215,7 +213,7 @@ namespace mgt_parser
             if (match.Groups.Count == 0)
                 throw new Exception("Regex for date not matched!");
 
-            Console.WriteLine(match.Value);
+            //Console.WriteLine(match.Value);
             GroupCollection groups = match.Groups;
 
             var day = Convert.ToInt32(groups[1].Value);
