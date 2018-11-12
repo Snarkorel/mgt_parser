@@ -49,14 +49,14 @@ namespace mgt_parser
         }
 
         //ONLY FOR TEST PURPOSES!
-        public ScheduleInfo(string type, string route, string day, string dir, int stopNum)
-        {
-            _transportType = TrType.GetTransportType(type);
-            _routeName = route;
-            _days = new Days(day);
-            _direction = Direction.GetDirectionCode(dir);
-            _stopNumber = stopNum;
-        }
+        //public ScheduleInfo(string type, string route, string day, string dir, int stopNum)
+        //{
+        //    _transportType = TrType.GetTransportType(type);
+        //    _routeName = route;
+        //    _days = new Days(day);
+        //    _direction = Direction.GetDirectionCode(dir);
+        //    _stopNumber = stopNum;
+        //}
 
         public TransportType GetTransportType()
         {
