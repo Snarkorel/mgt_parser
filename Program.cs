@@ -192,8 +192,8 @@ namespace mgt_parser
                 sw.Flush();
                 sw.Close();
                 file.Close();
-                Thread.CurrentThread.Abort();
             }
+            Thread.CurrentThread.Abort();
         }
 
         private static void VerbosePrint(string str)
