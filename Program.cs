@@ -8,27 +8,31 @@ using System.Threading;
 
 namespace mgt_parser
 {
-    class Program //TODO: in future this should be a class library
+    class Program
     {
-        private static HttpClient _client;
-        //private static List<Schedule> _schedules; //TODO: use DB instead of List
+        private static HttpClient[] _clients;
         private static bool _verbose; //TODO: set via command-line arguments
         private static object _siLock = new object();
         private static object _outLock = new object();
         private static Queue<ScheduleInfo> _siQueue = new Queue<ScheduleInfo>();
         private static Queue<string> _outputQueue = new Queue<string>();
-        private static Thread[] _parseThreads;
+        private static Thread[] _parseThreads; //TODO: async tasks instead of threads
         private static Thread _outputThread;
-        private static int _threadsCnt = 12; //TODO: this count should be set via command-line arguments
-        private static bool _outputFinish; //TODO: use events
-        private static readonly int _sleepTime = 5;
+        private static int _threadsCnt = 8; //TODO: this count should be set via command-line arguments
+        private static bool _parseFinish;
+        private static bool _outputFinish; //TODO: use events?
+        private static readonly int _sleepTime = 0;
+        private static int _abortedCnt;
+        private static object _abortedLock = new object();
 
-        static void Main(string[] args) //TODO: args - verbose (for debug output), threadcount
+        static void Main(string[] args) //TODO: args - verbose (for debug output), threadcount, timeout
         {
-            VerbosePrint("Starting");
-            _client = new HttpClient();
+            //TODO: parse args
 
-            _verbose = true; //TEST
+            VerbosePrint("Starting");
+            _clients = new HttpClient[_threadsCnt + 1];
+
+            //_verbose = true; //TEST
 
             _outputThread = new Thread(OutputThread);
             _outputThread.Start();
@@ -37,10 +41,12 @@ namespace mgt_parser
             for (var i = 0; i < _threadsCnt; i++)
             {
                 _parseThreads[i] = new Thread(ParseThread);
-                _parseThreads[i].Start();
+                _clients[i] = new HttpClient();
+                _parseThreads[i].Start(_clients[i]);
             }
 
-            var task = GetLists(_client);
+            _clients[_threadsCnt] = new HttpClient();
+            var task = GetLists(_clients[_threadsCnt]);
             task.Wait();
                        
             //wait for threads completion
@@ -54,12 +60,12 @@ namespace mgt_parser
                     siCnt = _siQueue.Count;
                 }
             }
-            while (siCnt != 0); //TODO: wait for all worker completion. Add events?
-            for (var i = 0; i < _parseThreads.Length; i++)
-            {
-                _parseThreads[i].Abort();
-            }
-                       
+            while (siCnt != 0);
+            _parseFinish = true;
+
+            while (_abortedCnt != _threadsCnt)
+                Thread.Sleep(_sleepTime);
+            
             VerbosePrint("Waiting for output thread completion");
             int outCnt = 0;
             do
@@ -70,94 +76,123 @@ namespace mgt_parser
                     outCnt = _outputQueue.Count;
                 }
             }
-            while (outCnt != 0); //TODO: wait for file write & close. Add event?
+            while (outCnt != 0);
             _outputFinish = true;
-            _outputThread.Abort();
+
+            while (_outputThread.IsAlive) //TODO: check this
+            {
+                Thread.Sleep(_sleepTime);
+            }
 
             VerbosePrint("Finishing");
 
             return;
         }
 
-        private static async void ParseThread() //TODO: thread aborted event
+        private static async void ParseThread(object clientParam) //TODO: thread aborted event
         {
+            var client = (HttpClient)clientParam; //TODO: check "as"
             ScheduleInfo scheduleInfo = new ScheduleInfo("avto", string.Empty, "0000000", "AB", string.Empty, -1, string.Empty); //TODO: deal with default values
+            var formatStr = "{0};{1};{2};{3};'{4}';{5};'{6}';{7};{8};{9};{10};'{11}'";
+            int cnt = 0;
             while (true)
             {
-                int cnt = 0;
-                while (cnt == 0)
-                {
-                    lock (_siLock)
-                    {
-                        cnt = _siQueue.Count;
-                        if (cnt != 0)
-                            scheduleInfo = _siQueue.Dequeue();
-                    }
-                    Thread.Sleep(_sleepTime);
-                };
+                Thread.Sleep(_sleepTime);
 
-                var schedule = await GetSchedule(_client, scheduleInfo);
-                if (schedule != null)
+                lock (_siLock)
                 {
-                    foreach (var entry in schedule.GetEntries())
-                    {
-                        var formatStr = "{0};{1};{2};{3};'{4}';{5};'{6}';{7};{8};{9};{10};'{11}'";
-                        var si = schedule.GetInfo();
-                        var tType = si.GetTransportTypeString();
-                        var rName = si.GetRouteName();
-                        var ds = si.GetDaysOfOperation().ToString();
-                        var dc = si.GetDirectionCodeString();
-                        var dn = si.GetDirectionName();
-                        var snum = si.GetStopNumber();
-                        var sname = si.GetStopName();
-                        var valDat = schedule.GetValidityTime().ToString("dd.MM.yyyy");
-                        var hour = entry.GetHour();
-                        var min = entry.GetMinute();
-                        var rType = entry.GetRouteType();
-                        var rDest = schedule.GetSpecialRoute(rType);
-                        var csvStr = string.Format(formatStr, tType, rName, ds, dc, dn, snum, sname, valDat, hour, min, rType, rDest);
+                    cnt = _siQueue.Count;
+                    if (cnt != 0)
+                        scheduleInfo = _siQueue.Dequeue();
+                }
 
-                        lock (_outputQueue)
-                        {
-                            _outputQueue.Enqueue(csvStr);
-                        }
+                if (_parseFinish && cnt == 0) //Thread finish condition
+                    break;
+
+                if (cnt == 0)
+                {
+                    continue;
+                }
+
+                var schedule = await GetSchedule(client, scheduleInfo);
+                if (schedule == null)
+                    continue;
+
+                foreach (var entry in schedule.GetEntries())
+                {
+                    var si = schedule.GetInfo();
+                    var tType = si.GetTransportTypeString();
+                    var rName = si.GetRouteName();
+                    var ds = si.GetDaysOfOperation().ToString();
+                    var dc = si.GetDirectionCodeString();
+                    var dn = si.GetDirectionName();
+                    var snum = si.GetStopNumber();
+                    var sname = si.GetStopName();
+                    var valDat = schedule.GetValidityTime().ToString("dd.MM.yyyy");
+                    var hour = entry.GetHour();
+                    var min = entry.GetMinute();
+                    var rType = entry.GetRouteType();
+                    var rDest = schedule.GetSpecialRoute(rType);
+                    var csvStr = string.Format(formatStr, tType, rName, ds, dc, dn, snum, sname, valDat, hour, min, rType, rDest);
+
+                    lock (_outLock)
+                    {
+                        _outputQueue.Enqueue(csvStr);
                     }
                 }
             }
+            try
+            {
+                Thread.CurrentThread.Abort();
+            }
+            catch (ThreadAbortException)
+            {
+                lock(_abortedLock)
+                {
+                    _abortedCnt++;
+                }
+            }
+            
         }
 
-        private static void OutputThread() //TODO: thread aborted event
+        private static async void OutputThread()
         {
             var time = DateTime.Now;
             var filename = string.Format("{0:D4}{1:D2}{2:D2}_{3:D2}{4:D2}{5:D2}.csv", time.Year, time.Month, time.Day, time.Hour, time.Minute, time.Second);
 
             using (FileStream file = new FileStream(filename, FileMode.Create))
-            using (StreamWriter sw = new StreamWriter(file))
+            using (StreamWriter sw = new StreamWriter(file, Encoding.UTF8, 65535))
             {
+                int cnt = 0;
+                var csvStr = string.Empty;
                 while (true)
                 {
-                    int cnt = 0;
-                    while (cnt == 0)
+                    Thread.Sleep(_sleepTime);
+
+                    lock (_outLock)
                     {
-                        lock (_outLock)
+                        cnt = _outputQueue.Count;
+                        if (cnt != 0)
                         {
-                            cnt = _outputQueue.Count;
-                            if (cnt != 0)
-                            {
-                                var csvStr = _outputQueue.Dequeue();
-                                sw.WriteLine(csvStr);
-                            }
+                            csvStr = _outputQueue.Dequeue();
                         }
-                        Thread.Sleep(_sleepTime);
-                    };
-                    
-                    if (_outputFinish)
+                            
+                    }
+
+                    if (_outputFinish && cnt == 0) //Thread finish condition
                         break;
+
+                    if (cnt == 0)
+                        continue;
+
+                    if (!string.IsNullOrEmpty(csvStr))
+                        sw.WriteLine(csvStr);
                 };
 
                 sw.Flush();
                 sw.Close();
                 file.Close();
+                Thread.CurrentThread.Abort();
             }
         }
 
@@ -173,7 +208,7 @@ namespace mgt_parser
             {
                 var type = TrType.TransportTypes[i];
                 VerbosePrint("Obtaining routes for " + type);
-                var routes = await GetRoutesList(_client, type);
+                var routes = await GetRoutesList(client, type);
                 foreach (var route in routes)
                 {
                     VerbosePrint("\tFound route: " + route);
