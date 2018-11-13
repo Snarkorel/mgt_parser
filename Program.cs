@@ -8,31 +8,30 @@ using System.Threading;
 
 namespace mgt_parser
 {
-    class Program
+    class Program //TODO: string to resources, localization
     {
         private static HttpClient[] _clients;
-        private static bool _verbose; //TODO: set via command-line arguments
+        private static bool _verbose;
         private static object _siLock = new object();
         private static object _outLock = new object();
         private static Queue<ScheduleInfo> _siQueue = new Queue<ScheduleInfo>();
         private static Queue<string> _outputQueue = new Queue<string>();
-        private static Thread[] _parseThreads; //TODO: async tasks instead of threads
+        private static Thread[] _parseThreads; //TODO: async tasks instead of threads?
         private static Thread _outputThread;
-        private static int _threadsCnt = 8; //TODO: this count should be set via command-line arguments
+        private static int _threadsCnt = 2;
         private static bool _parseFinish;
         private static bool _outputFinish; //TODO: use events?
-        private static readonly int _sleepTime = 0;
+        private static int _sleepTime;
         private static int _abortedCnt;
         private static object _abortedLock = new object();
 
-        static void Main(string[] args) //TODO: args - verbose (for debug output), threadcount, timeout
+        static void Main(string[] args)
         {
-            //TODO: parse args
+            PrintMan();
+            ParseCommandLineArguments(args);
 
             VerbosePrint("Starting");
             _clients = new HttpClient[_threadsCnt + 1];
-
-            //_verbose = true; //TEST
 
             _outputThread = new Thread(OutputThread);
             _outputThread.Start();
@@ -79,7 +78,7 @@ namespace mgt_parser
             while (outCnt != 0);
             _outputFinish = true;
 
-            while (_outputThread.IsAlive) //TODO: check this
+            while (_outputThread.IsAlive)
             {
                 Thread.Sleep(_sleepTime);
             }
@@ -87,6 +86,39 @@ namespace mgt_parser
             VerbosePrint("Finishing");
 
             return;
+        }
+
+        private static void PrintMan()
+        {
+            Console.WriteLine("Mosgortrans schedule parser with CSV output. Avaliable parameters:");
+            Console.WriteLine("-verbose: for detailed output to console (default: false);");
+            Console.WriteLine("-threads <count>: for threads count setup (default: 2, recommended: 8)");
+            Console.WriteLine("-timeout <milliseconds>: for threads timeout setup (default: 0)");
+            Console.WriteLine("Unknown parameters will be ignored.");
+            Console.WriteLine();
+        }
+
+        private static void ParseCommandLineArguments(string[] args)
+        {
+            for (var i = 0; i < args.Length; i++)
+            {
+                var str = args[i].ToLower();
+                str.Trim();
+                if (str == "-verbose") //default: false
+                    _verbose = true;
+                if (str == "-timeout") //default: 2
+                {
+                    if (i + 1 >= args.Length)
+                        throw new ArgumentException(args[i]);
+                    int.TryParse(args[i + 1], out _sleepTime);
+                }
+                if (str == "-threads") //default: 0
+                {
+                    if (i + 1 >= args.Length)
+                        throw new ArgumentException(args[i]);
+                    int.TryParse(args[i + 1], out _threadsCnt);
+                }
+            }
         }
 
         private static async void ParseThread(object clientParam) //TODO: thread aborted event
