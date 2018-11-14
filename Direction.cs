@@ -14,7 +14,7 @@ namespace mgt_parser
         Backward
     }
 
-    public static class Direction
+    public class Direction
     {
         private const string Forward = "AB";
         private const string Backward = "BA";

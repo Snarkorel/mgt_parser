@@ -1,6 +1,6 @@
 ﻿namespace mgt_parser
 {
-    class Uri
+    public static class Uri
     {
         public const string RouteListRequestUri = "http://mosgortrans.org/pass3/request.ajax.php?list=ways&type={0}";
         public const string RouteDaysRequestUri = "http://mosgortrans.org/pass3/request.ajax.php?list=days&type={0}&way={1}";
