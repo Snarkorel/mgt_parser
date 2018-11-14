@@ -14,7 +14,7 @@ Example of usage:
 
 ## CSV format description
 
-Each trip is represented as string in CSV format:
+Each trip is represented as a string in CSV format:
 `Transport type; Route name; Days of operation bitmask; Direction code; 'Direction name'; Stop number; 'Stop name'; Valid from; Hour; Minute; Route type; 'Special Direction'`
 
 Semicolon `;` used as separator, some string included in `'` quotes.
