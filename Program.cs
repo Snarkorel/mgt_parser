@@ -16,7 +16,7 @@ namespace mgt_parser
         private static object _outLock = new object();
         private static Queue<ScheduleInfo> _siQueue = new Queue<ScheduleInfo>();
         private static Queue<string> _outputQueue = new Queue<string>();
-        private static Thread[] _parseThreads; //TODO: async tasks instead of threads?
+        private static Thread[] _parseThreads;
         private static Thread _outputThread;
         private static int _threadsCnt = 2;
         private static bool _parseFinish;
@@ -106,13 +106,13 @@ namespace mgt_parser
                 str.Trim();
                 if (str == "-verbose") //default: false
                     _verbose = true;
-                if (str == "-timeout") //default: 2
+                if (str == "-timeout") //default: 0
                 {
                     if (i + 1 >= args.Length)
                         throw new ArgumentException(args[i]);
                     int.TryParse(args[i + 1], out _sleepTime);
                 }
-                if (str == "-threads") //default: 0
+                if (str == "-threads") //default: 2
                 {
                     if (i + 1 >= args.Length)
                         throw new ArgumentException(args[i]);
@@ -121,9 +121,9 @@ namespace mgt_parser
             }
         }
 
-        private static async void ParseThread(object clientParam) //TODO: thread aborted event
+        private static async void ParseThread(object clientParam)
         {
-            var client = (HttpClient)clientParam; //TODO: check "as"
+            var client = clientParam as HttpClient;
             ScheduleInfo scheduleInfo = new ScheduleInfo("avto", string.Empty, "0000000", "AB", string.Empty, -1, string.Empty); //TODO: deal with default values
             var formatStr = "{0};{1};{2};{3};'{4}';{5};'{6}';{7};{8};{9};{10};'{11}'";
             int cnt = 0;
@@ -278,9 +278,9 @@ namespace mgt_parser
                                     }
                                     Thread.Sleep(_sleepTime);
                                 }
-                                catch (Exception ex) //TEST
+                                catch (Exception ex) //If we got exception - log it, and skip faulty item
                                 {
-                                    VerbosePrint("EXCEPTION OCCURED: " + ex.Message);
+                                    Console.WriteLine("EXCEPTION OCCURED: " + ex.Message);
                                     continue;
                                 }
 
@@ -384,7 +384,7 @@ namespace mgt_parser
             var encodedRoute = EncodeCyrillicUri(name);
 
             var uri = Uri.GetUri(si.GetTransportTypeString(), encodedRoute, si.GetDaysOfOperation().ToString(), si.GetDirectionCodeString(), si.GetStopNumber().ToString());
-            var response = await GetHttpResponse(client, uri); //TODO: handle response errors
+            var response = await GetHttpResponse(client, uri);
             if (response.Length == 0)
                 return null;
 
