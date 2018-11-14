@@ -19,7 +19,7 @@ namespace mgt_parser
             const string TagBeginning = "<";
             const string TdClosingTag = "</td>";
             const string SpanClosingTag = "</span>";
-            const string NoDataForLegend = "Нет особых данных для легенды";
+            //const string NoDataForLegend = "Нет особых данных для легенды";
             const string From = "от";
 
             //<span class=\"hour\">(\d+)</span></td><td align=.*>(.*)</td>

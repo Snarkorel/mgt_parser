@@ -16,77 +16,76 @@ namespace mgt_parser
         private static object _outLock = new object();
         private static Queue<ScheduleInfo> _siQueue = new Queue<ScheduleInfo>();
         private static Queue<string> _outputQueue = new Queue<string>();
-        private static Thread[] _parseThreads; //TODO: async tasks instead of threads?
-        private static Thread _outputThread;
-        private static int _threadsCnt = 2;
-        private static bool _parseFinish;
-        private static bool _outputFinish; //TODO: use events?
+        private static int _parseTasksCnt = 2;
         private static int _sleepTime;
-        private static int _abortedCnt;
-        private static object _abortedLock = new object();
+        private static TimeSpan _taskDelay;
 
         static void Main(string[] args)
         {
             PrintMan();
             ParseCommandLineArguments(args);
-
             VerbosePrint("Starting");
-            _clients = new HttpClient[_threadsCnt + 1];
 
-            _outputThread = new Thread(OutputThread);
-            _outputThread.Start();
+            var parseCts = new CancellationTokenSource();
+            var parseCancelToken = parseCts.Token;
+            var outputCts = new CancellationTokenSource();
+            var outputCancelToken = outputCts.Token;
 
-            var _parseThreads = new Thread[_threadsCnt];
-            for (var i = 0; i < _threadsCnt; i++)
+            _clients = new HttpClient[_parseTasksCnt + 1]; //httpClients used for parse tasks
+            _clients[_parseTasksCnt] = new HttpClient(); //One client is used for GetLists task
+
+            var outputTask = Task.Run(async () => { await OutputTask(outputCancelToken); });
+            //outputTask.Start();
+
+            var parseTasks = new Task[_parseTasksCnt];
+            for (var i = 0; i < _parseTasksCnt; i++)
             {
-                _parseThreads[i] = new Thread(ParseThread);
                 _clients[i] = new HttpClient();
-                _parseThreads[i].Start(_clients[i]);
+                parseTasks[i] = Task.Run(async () => { await ParseTask(_clients[i], parseCancelToken); });
+                //parseTasks[i].Start();
             }
 
-            _clients[_threadsCnt] = new HttpClient();
-            var task = GetLists(_clients[_threadsCnt]);
+            var task = GetLists(_clients[_parseTasksCnt]);
             task.Wait();
                        
-            //wait for threads completion
-            VerbosePrint("Waiting for parse threads completion");
+            //wait for tasks completion
+            VerbosePrint("Waiting for parse tasks completion");
             int siCnt = 0;
             do
             {
-                Thread.Sleep(_sleepTime);
+                if (_sleepTime > 0)
+                    Thread.Sleep(_sleepTime);
                 lock (_siLock)
                 {
                     siCnt = _siQueue.Count;
                 }
             }
             while (siCnt != 0);
-            _parseFinish = true;
 
-            while (_abortedCnt != _threadsCnt)
-                Thread.Sleep(_sleepTime);
-            
-            VerbosePrint("Waiting for output thread completion");
+            parseCts.Cancel();
+            Task.WaitAll(parseTasks);
+
+            VerbosePrint("Waiting for output task completion");
             int outCnt = 0;
             do
             {
-                Thread.Sleep(_sleepTime);
+                if (_sleepTime > 0)
+                    Thread.Sleep(_sleepTime);
                 lock (_outLock)
                 {
                     outCnt = _outputQueue.Count;
                 }
             }
             while (outCnt != 0);
-            _outputFinish = true;
 
-            while (_outputThread.IsAlive)
-            {
-                Thread.Sleep(_sleepTime);
-            }
+            outputCts.Cancel();
+            outputTask.Wait();
 
             VerbosePrint("Finishing");
 
             return;
         }
+
 
         private static void PrintMan()
         {
@@ -106,30 +105,31 @@ namespace mgt_parser
                 str.Trim();
                 if (str == "-verbose") //default: false
                     _verbose = true;
-                if (str == "-timeout") //default: 2
+                if (str == "-timeout") //default: 0
                 {
                     if (i + 1 >= args.Length)
                         throw new ArgumentException(args[i]);
                     int.TryParse(args[i + 1], out _sleepTime);
+                    _taskDelay = new TimeSpan(0, 0, 0, 0, _sleepTime);
                 }
-                if (str == "-threads") //default: 0
+                if (str == "-threads") //default: 2
                 {
                     if (i + 1 >= args.Length)
                         throw new ArgumentException(args[i]);
-                    int.TryParse(args[i + 1], out _threadsCnt);
+                    int.TryParse(args[i + 1], out _parseTasksCnt);
                 }
             }
         }
 
-        private static async void ParseThread(object clientParam) //TODO: thread aborted event
+        private static async Task ParseTask(HttpClient client, CancellationToken cToken)
         {
-            var client = (HttpClient)clientParam; //TODO: check "as"
             ScheduleInfo scheduleInfo = new ScheduleInfo("avto", string.Empty, "0000000", "AB", string.Empty, -1, string.Empty); //TODO: deal with default values
             var formatStr = "{0};{1};{2};{3};'{4}';{5};'{6}';{7};{8};{9};{10};'{11}'";
             int cnt = 0;
             while (true)
             {
-                Thread.Sleep(_sleepTime);
+                if (_sleepTime > 0)
+                    await Task.Delay(_taskDelay);
 
                 lock (_siLock)
                 {
@@ -138,7 +138,7 @@ namespace mgt_parser
                         scheduleInfo = _siQueue.Dequeue();
                 }
 
-                if (_parseFinish && cnt == 0) //Thread finish condition
+                if (cToken.IsCancellationRequested && cnt == 0) //Task finish condition
                     break;
 
                 if (cnt == 0)
@@ -172,22 +172,10 @@ namespace mgt_parser
                         _outputQueue.Enqueue(csvStr);
                     }
                 }
-            }
-            try
-            {
-                Thread.CurrentThread.Abort();
-            }
-            catch (ThreadAbortException)
-            {
-                lock(_abortedLock)
-                {
-                    _abortedCnt++;
-                }
-            }
-            
+            }            
         }
 
-        private static async void OutputThread()
+        private static async Task OutputTask(CancellationToken cToken)
         {
             var time = DateTime.Now;
             var filename = string.Format("{0:D4}{1:D2}{2:D2}_{3:D2}{4:D2}{5:D2}.csv", time.Year, time.Month, time.Day, time.Hour, time.Minute, time.Second);
@@ -199,7 +187,8 @@ namespace mgt_parser
                 var csvStr = string.Empty;
                 while (true)
                 {
-                    Thread.Sleep(_sleepTime);
+                    if (_sleepTime > 0)
+                        await Task.Delay(_taskDelay);
 
                     lock (_outLock)
                     {
@@ -208,24 +197,22 @@ namespace mgt_parser
                         {
                             csvStr = _outputQueue.Dequeue();
                         }
-                            
                     }
 
-                    if (_outputFinish && cnt == 0) //Thread finish condition
+                    if (cToken.IsCancellationRequested && cnt == 0) //Task finish condition
                         break;
 
                     if (cnt == 0)
                         continue;
 
                     if (!string.IsNullOrEmpty(csvStr))
-                        sw.WriteLine(csvStr);
+                        await sw.WriteLineAsync(csvStr); //AsyncWriteLine?
                 };
 
                 sw.Flush();
                 sw.Close();
                 file.Close();
             }
-            Thread.CurrentThread.Abort();
         }
 
         private static void VerbosePrint(string str)
@@ -276,11 +263,12 @@ namespace mgt_parser
                                     {
                                         _siQueue.Enqueue(scheduleInfo);
                                     }
-                                    Thread.Sleep(_sleepTime);
+                                    if (_sleepTime > 0)
+                                        await Task.Delay(_taskDelay);
                                 }
-                                catch (Exception ex) //TEST
+                                catch (Exception ex) //If we got exception - log it, and skip faulty item
                                 {
-                                    VerbosePrint("EXCEPTION OCCURED: " + ex.Message);
+                                    Console.WriteLine("EXCEPTION OCCURED: " + ex.Message);
                                     continue;
                                 }
 
@@ -384,7 +372,7 @@ namespace mgt_parser
             var encodedRoute = EncodeCyrillicUri(name);
 
             var uri = Uri.GetUri(si.GetTransportTypeString(), encodedRoute, si.GetDaysOfOperation().ToString(), si.GetDirectionCodeString(), si.GetStopNumber().ToString());
-            var response = await GetHttpResponse(client, uri); //TODO: handle response errors
+            var response = await GetHttpResponse(client, uri);
             if (response.Length == 0)
                 return null;
 
