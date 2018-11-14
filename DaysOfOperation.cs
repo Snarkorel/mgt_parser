@@ -56,7 +56,7 @@ namespace mgt_parser
 
         public BitArray GetDays()
         {
-            return _daysOfOperation; //TODO: check for null?
+            return _daysOfOperation;
         }
 
         public override string ToString()

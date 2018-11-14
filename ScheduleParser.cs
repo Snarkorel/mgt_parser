@@ -7,7 +7,6 @@ namespace mgt_parser
     public static class ScheduleParser
     {
         //I know that parsing HTML by regex is a bad idea, but objective is not to use third-party parsers
-        //TODO: clean debug output to console
         public static Schedule Parse(string htmlData, ScheduleInfo si)
         {
             var schedule = new Schedule(si);
@@ -34,9 +33,7 @@ namespace mgt_parser
             var minuteRegex = new Regex(MinutesRegexPattern);
 
             //Starting routine
-
-            //TODO: error and 404 handling, handling of empty routes
-
+            
             searchIndex = htmlData.IndexOf(ValidityTimeSearchStr, index);
             if (searchIndex == -1)
                 throw new Exception("Validity time not found!");
@@ -51,8 +48,6 @@ namespace mgt_parser
             schedule.SetValidityTime(date);
             //Console.WriteLine("Schedule valid from: " + date.ToString());
             index = searchIndex;
-
-            //Stop name parsing is not necessary - we should know it from server response?
 
             //Iterative hours and minutes parsing
             do
@@ -132,15 +127,14 @@ namespace mgt_parser
                     var legendData = htmlData.Substring(index, searchIndex - index);
 
                     //.*? for non-greedy match instead of greedy .*
-                    const string noColorsRegexPattern = "<p class=\"helpfile\"><b>(.*)<\\/b>(.*)<\\/p>";
+                    //const string noColorsRegexPattern = "<p class=\"helpfile\"><b>(.*)<\\/b>(.*)<\\/p>";
                     const string colorsRegexPattern = "<p class=\"helpfile\"><b style=\"color: ([#a-zA-Z0-9]+)\">(.*?)<\\/b>(.*?)<\\/p>";
 
-                    //regex should be ungreedy (*? insted of .*)
                     //regex pattern without colors: <p class="helpfile"><b>(.*)<\/b>(.*)<\/p>
                     //group1: bold text, group2: non-bold text (check for empty!)
 
-                    var noColorsRegex = new Regex(noColorsRegexPattern);
-                    var matches = noColorsRegex.Matches(legendData);
+                    //var noColorsRegex = new Regex(noColorsRegexPattern);
+                    //var matches = noColorsRegex.Matches(legendData);
 
                     //Console.WriteLine("Matching non-colored legend...");
 
@@ -170,7 +164,7 @@ namespace mgt_parser
                     //group1: color name, group2: color name in russian (bold text), group3: non-bold text (description)
 
                     var colorsRegex = new Regex(colorsRegexPattern);
-                    matches = colorsRegex.Matches(legendData);
+                    var matches = colorsRegex.Matches(legendData);
 
                     if (matches.Count != 0)
                     {

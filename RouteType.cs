@@ -40,7 +40,6 @@ namespace mgt_parser
 
         public static RouteType GetRouteType(string routeColor)
         {
-            //TODO: lowercase?
             switch (routeColor)
             {
                 case Red:
