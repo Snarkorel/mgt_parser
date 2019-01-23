@@ -94,6 +94,7 @@ namespace mgt_parser
             Console.WriteLine("-verbose: for detailed output to console (default: false);");
             Console.WriteLine("-threads <count>: for threads count setup (default: 2, recommended: 8)");
             Console.WriteLine("-timeout <milliseconds>: for threads timeout setup (default: 0)");
+            Console.WriteLine("-host <hostname>: for custom host name of schedules server (default: \"213.79.91.85\", previously was \"mosgortrans.org\")");
             Console.WriteLine("Unknown parameters will be ignored.");
             Console.WriteLine();
         }
