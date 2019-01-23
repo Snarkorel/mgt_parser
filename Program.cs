@@ -118,6 +118,13 @@ namespace mgt_parser
                         throw new ArgumentException(args[i]);
                     int.TryParse(args[i + 1], out _threadsCnt);
                 }
+                if (str == "-host") //default: 213.79.91.85
+                {
+                    if (i + 1 >= args.Length)
+                        throw new ArgumentException(args[i]);
+                    var host = args[i + 1];
+                    Uri.SetHost(host);
+                }
             }
         }
 
