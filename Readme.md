@@ -8,6 +8,7 @@ Available command-line arguments:
 * `-verbose` for detailed output (default: false);
 * `-threads <count>` for thread count setup (default: 2);
 * `-timeout <milliseconds>` for thread sleep time setup (default: 0);
+* `-host <hostname>` for custom hostname of schedules server (default: 213.79.91.85);
 
 Example of usage:
 `C:\dev\mgt_parser.exe -verbose -threads 8`
