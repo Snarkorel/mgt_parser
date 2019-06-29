@@ -49,7 +49,7 @@
 
         public static string GetUri(TransportType type, string route, Days days, DirectionCode direction, int stop)
         {
-            return string.Format(_addr + ScheduleRequestUri, TrType.GetTypeString(type), route, days.ToString(), Direction.GetDirectionString(direction), stop);
+            return string.Format(_addr + ScheduleRequestUri, type.GetTypeString(), route, days.ToString(), direction.GetDirectionString(), stop);
         }
     }
 }

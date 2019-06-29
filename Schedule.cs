@@ -4,7 +4,7 @@ using System;
 namespace mgt_parser
 {
     [Serializable]
-    public class Schedule //TODO: IEnumerable?
+    public class Schedule
     {
         private ScheduleInfo _info;
         private List<ScheduleEntry> _entries;

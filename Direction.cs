@@ -14,14 +14,14 @@ namespace mgt_parser
         Backward
     }
 
-    public class Direction
+    public static class Direction
     {
         private const string Forward = "AB";
         private const string Backward = "BA";
 
         public static string[] Directions = { Forward, Backward };
 
-        public static string GetDirectionString(DirectionCode dir)
+        public static string GetDirectionString(this DirectionCode dir)
         {
             switch (dir)
             {

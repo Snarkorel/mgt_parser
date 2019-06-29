@@ -6,6 +6,33 @@ namespace mgt_parser
 {
     public static class ScheduleParser
     {
+        private static readonly Dictionary<string, int> _months = new Dictionary<string, int> {
+                {"января", 1},
+                {"февраля", 2},
+                {"марта", 3},
+                {"апреля", 4},
+                {"мая", 5},
+                {"июня", 6},
+                {"июля", 7},
+                {"августа", 8},
+                {"сентября", 9},
+                {"октября", 10},
+                {"ноября", 11},
+                {"декабря", 12} };
+        private const string DateTimeRegexPattern = @"(\d+) (\w+) (\d+)";
+        private const string ColorsRegexPattern = "<p class=\"helpfile\"><b style=\"color: ([#a-zA-Z0-9]+)\">(.*?)<\\/b>(.*?)<\\/p>";
+        private const string ValidityTimeSearchStr = "c</h3></td><td><h3>";
+        private const string LegendHeaderStr = "<h3>Легенда</h3>";
+        private const string TagBeginning = "<";
+        private const string TdClosingTag = "</td>";
+        private const string SpanClosingTag = "</span>";
+        //const string NoDataForLegend = "Нет особых данных для легенды";
+        private const string From = "от";
+        private const string HourSearchStr = "<span class=\"hour\">";
+        private const string HourRegexPattern = "<span class=\"hour\">(\\d+)</span>"; //" < span class=\"hour\">(\\d+)</span></td><td align=.*>(.*)</td>";
+        private const string MinutesSearchStr = "<span class=\"minutes\"";
+        private const string MinutesRegexPattern = "<span class=\"minutes\"( |.*color: ([a-zA-z0-9#]+).*)>(\\d+)</span>";
+
         //I know that parsing HTML by regex is a bad idea, but objective is not to use third-party parsers
         public static Schedule Parse(string htmlData, ScheduleInfo si)
         {
@@ -14,22 +41,12 @@ namespace mgt_parser
             var index = 0; //Current position of htmlData processing (shifts if some item is found and parsed)
             var searchIndex = 0; //Curent position of search ahead of index
 
-            const string ValidityTimeSearchStr = "c</h3></td><td><h3>";
-            const string LegendHeaderStr = "<h3>Легенда</h3>";
-            const string TagBeginning = "<";
-            const string TdClosingTag = "</td>";
-            const string SpanClosingTag = "</span>";
-            //const string NoDataForLegend = "Нет особых данных для легенды";
-            const string From = "от";
-
             //<span class=\"hour\">(\d+)</span></td><td align=.*>(.*)</td>
-            const string HourSearchStr = "<span class=\"hour\">";
-            const string HourRegexPattern = "<span class=\"hour\">(\\d+)</span>"; //" < span class=\"hour\">(\\d+)</span></td><td align=.*>(.*)</td>";
+            
             var hourRegex = new Regex(HourRegexPattern);
             //<span class="minutes" >02</span>
             //<span class="minutes" style="color: red; font-weight: bold;">37</span><br>
-            const string MinutesSearchStr = "<span class=\"minutes\"";
-            const string MinutesRegexPattern = "<span class=\"minutes\"( |.*color: ([a-zA-z0-9#]+).*)>(\\d+)</span>";
+            
             var minuteRegex = new Regex(MinutesRegexPattern);
 
             //Starting routine
@@ -128,7 +145,7 @@ namespace mgt_parser
 
                     //.*? for non-greedy match instead of greedy .*
                     //const string noColorsRegexPattern = "<p class=\"helpfile\"><b>(.*)<\\/b>(.*)<\\/p>";
-                    const string colorsRegexPattern = "<p class=\"helpfile\"><b style=\"color: ([#a-zA-Z0-9]+)\">(.*?)<\\/b>(.*?)<\\/p>";
+                    
 
                     //regex pattern without colors: <p class="helpfile"><b>(.*)<\/b>(.*)<\/p>
                     //group1: bold text, group2: non-bold text (check for empty!)
@@ -163,7 +180,7 @@ namespace mgt_parser
                     //should be multiple matches
                     //group1: color name, group2: color name in russian (bold text), group3: non-bold text (description)
 
-                    var colorsRegex = new Regex(colorsRegexPattern);
+                    var colorsRegex = new Regex(ColorsRegexPattern);
                     var matches = colorsRegex.Matches(legendData);
 
                     if (matches.Count != 0)
@@ -186,22 +203,7 @@ namespace mgt_parser
 
         private static DateTime ParseDateTime(string dateStr)
         {
-            Dictionary<string, int> months = new Dictionary<string, int> {
-                {"января", 1},
-                {"февраля", 2},
-                {"марта", 3},
-                {"апреля", 4},
-                {"мая", 5},
-                {"июня", 6},
-                {"июля", 7},
-                {"августа", 8},
-                {"сентября", 9},
-                {"октября", 10},
-                {"ноября", 11},
-                {"декабря", 12} };
-
-            const string regexPattern = @"(\d+) (\w+) (\d+)";
-            var regex = new Regex(regexPattern, RegexOptions.IgnoreCase);
+            var regex = new Regex(DateTimeRegexPattern, RegexOptions.IgnoreCase);
             var match = regex.Match(dateStr);
 
             if (match.Groups.Count == 0)
@@ -211,7 +213,7 @@ namespace mgt_parser
             GroupCollection groups = match.Groups;
 
             var day = Convert.ToInt32(groups[1].Value);
-            var month = months[groups[2].Value];
+            var month = _months[groups[2].Value];
             var year = Convert.ToInt32(groups[3].Value);
 
             return new DateTime(year, month, day);

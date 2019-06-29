@@ -26,7 +26,7 @@ namespace mgt_parser
 
         public static string[] TransportTypes = { Bus, Trolleybus, Tram };
 
-        public static string GetTypeString(TransportType type)
+        public static string GetTypeString(this TransportType type)
         {
             switch (type)
             {

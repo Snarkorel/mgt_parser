@@ -3,7 +3,7 @@
 namespace mgt_parser
 {
     [Serializable]
-    public class ScheduleEntry //TODO: IEnumerable?
+    public class ScheduleEntry
     {
         private int _hour;
         private int _minute;

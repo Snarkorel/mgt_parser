@@ -36,7 +36,7 @@ namespace mgt_parser
             _outputThread = new Thread(OutputThread);
             _outputThread.Start();
 
-            var _parseThreads = new Thread[_threadsCnt];
+            _parseThreads = new Thread[_threadsCnt];
             for (var i = 0; i < _threadsCnt; i++)
             {
                 _parseThreads[i] = new Thread(ParseThread);

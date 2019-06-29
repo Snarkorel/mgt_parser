@@ -31,7 +31,7 @@ namespace mgt_parser
 
         public string GetTransportTypeString()
         {
-            return TrType.GetTypeString(_transportType);
+            return _transportType.GetTypeString();
         }
 
         public string GetRouteName()
@@ -51,7 +51,7 @@ namespace mgt_parser
 
         public string GetDirectionCodeString()
         {
-            return Direction.GetDirectionString(_direction);
+            return _direction.GetDirectionString();
         }
 
         public string GetDirectionName()
