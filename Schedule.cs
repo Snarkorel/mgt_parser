@@ -6,35 +6,30 @@ namespace mgt_parser
     [Serializable]
     public class Schedule
     {
-        private ScheduleInfo _info;
-        private List<ScheduleEntry> _entries;
-        private DateTime _validFrom;
+        public ScheduleInfo Info { get; private set; }
+        public List<ScheduleEntry> Entries { get; private set; }
+        public DateTime ValidityTime { get; set; }
         private Dictionary<RouteType,string> _destinations; 
 
         public Schedule(ScheduleInfo info)
         {
-            _info = info;
-            _entries = new List<ScheduleEntry>();
+            Info = info;
+            Entries = new List<ScheduleEntry>();
         }
 
         public void AddEntry(ScheduleEntry entry)
         {
-            _entries.Add(entry);
-        }
-
-        public List<ScheduleEntry> GetEntries()
-        {
-            return _entries;
+            Entries.Add(entry);
         }
 
         public ScheduleInfo GetInfo()
         {
-            return _info;
+            return Info;
         }
 
         public string GetUri()
         {
-            return Uri.GetUri(_info.GetTransportType(), _info.GetRouteName(), _info.GetDaysOfOperation(), _info.GetDirectionCode(), _info.GetStopNumber());
+            return Uri.GetUri(Info.TransportType, Info.RouteName, Info.DaysOfOperation, Info.DirCode, Info.StopNumber);
         }
 
         public void SetSpecialRoute(RouteType type, string destination)
@@ -56,16 +51,6 @@ namespace mgt_parser
                 val = string.Empty;
             }
             return val;
-        }
-
-        public void SetValidityTime(DateTime validFrom)
-        {
-            _validFrom = validFrom;
-        }
-
-        public DateTime GetValidityTime()
-        {
-            return _validFrom;
         }
     }
 }

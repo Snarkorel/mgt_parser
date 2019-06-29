@@ -5,68 +5,33 @@ namespace mgt_parser
     [Serializable]
     public class ScheduleInfo
     {
-        private TransportType _transportType;
-        private string _routeName;
-        private Days _days;
-        private DirectionCode _direction;
-        private string _directionName;
-        private int _stopNumber;
-        private string _stopName;
+        public readonly TransportType TransportType;
+        public readonly string RouteName;
+        public readonly Days DaysOfOperation;
+        public readonly DirectionCode DirCode;
+        public readonly string DirectionName;
+        public readonly int StopNumber;
+        public readonly string StopName;
 
         public ScheduleInfo(string type, string route, string day, string dir, string dirName, int stopNum, string stopName)
         {
-            _transportType = TrType.GetTransportType(type);
-            _routeName = route;
-            _days = new Days(day);
-            _direction = Direction.GetDirectionCode(dir);
-            _directionName = dirName;
-            _stopNumber = stopNum;
-            _stopName = stopName;
-        }
-
-        public TransportType GetTransportType()
-        {
-            return _transportType;
+            TransportType = TrType.GetTransportType(type);
+            RouteName = route;
+            DaysOfOperation = new Days(day);
+            DirCode = Direction.GetDirectionCode(dir);
+            DirectionName = dirName;
+            StopNumber = stopNum;
+            StopName = stopName;
         }
 
         public string GetTransportTypeString()
         {
-            return _transportType.GetTypeString();
-        }
-
-        public string GetRouteName()
-        {
-            return _routeName;
-        }
-
-        public Days GetDaysOfOperation()
-        {
-            return _days;
-        }
-
-        public DirectionCode GetDirectionCode()
-        {
-            return _direction;
+            return TransportType.GetTypeString();
         }
 
         public string GetDirectionCodeString()
         {
-            return _direction.GetDirectionString();
-        }
-
-        public string GetDirectionName()
-        {
-            return _directionName;
-        }
-
-        public int GetStopNumber()
-        {
-            return _stopNumber;
-        }
-
-        public string GetStopName()
-        {
-            return _stopName;
+            return DirCode.GetDirectionString();
         }
     }
 }

@@ -158,20 +158,20 @@ namespace mgt_parser
                 if (schedule == null)
                     continue;
 
-                foreach (var entry in schedule.GetEntries())
+                foreach (var entry in schedule.Entries)
                 {
                     var si = schedule.GetInfo();
                     var tType = si.GetTransportTypeString();
-                    var rName = si.GetRouteName();
-                    var ds = si.GetDaysOfOperation().ToString();
+                    var rName = si.RouteName;
+                    var ds = si.DaysOfOperation.ToString();
                     var dc = si.GetDirectionCodeString();
-                    var dn = si.GetDirectionName();
-                    var snum = si.GetStopNumber();
-                    var sname = si.GetStopName();
-                    var valDat = schedule.GetValidityTime().ToString("dd.MM.yyyy");
-                    var hour = entry.GetHour();
-                    var min = entry.GetMinute();
-                    var rType = entry.GetRouteType();
+                    var dn = si.DirectionName;
+                    var snum = si.StopNumber;
+                    var sname = si.StopName;
+                    var valDat = schedule.ValidityTime.ToString("dd.MM.yyyy");
+                    var hour = entry.Hour;
+                    var min = entry.Minute;
+                    var rType = entry.RouteType;
                     var rDest = schedule.GetSpecialRoute(rType);
                     var csvStr = string.Format(formatStr, tType, rName, ds, dc, dn, snum, sname, valDat, hour, min, rType, rDest);
 
@@ -388,10 +388,10 @@ namespace mgt_parser
         {
             VerbosePrint("Obtaining schedule for stop");
             //encode cyrillic characters in route name, if they are present
-            var name = si.GetRouteName();
+            var name = si.RouteName;
             var encodedRoute = EncodeCyrillicUri(name);
 
-            var uri = Uri.GetUri(si.GetTransportTypeString(), encodedRoute, si.GetDaysOfOperation().ToString(), si.GetDirectionCodeString(), si.GetStopNumber().ToString());
+            var uri = Uri.GetUri(si.GetTransportTypeString(), encodedRoute, si.DaysOfOperation.ToString(), si.GetDirectionCodeString(), si.StopNumber.ToString());
             var response = await GetHttpResponse(client, uri);
             if (response.Length == 0)
                 return null;

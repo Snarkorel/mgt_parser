@@ -62,7 +62,7 @@ namespace mgt_parser
 
             var validityStr = htmlData.Substring(index, searchIndex - index);
             var date = ParseDateTime(validityStr);
-            schedule.SetValidityTime(date);
+            schedule.ValidityTime = date;
             //Console.WriteLine("Schedule valid from: " + date.ToString());
             index = searchIndex;
 
